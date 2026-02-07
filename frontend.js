@@ -388,22 +388,13 @@ logoSection.style.cssText = `
 
 const logo = document.createElement('div');
 logo.innerHTML = `
-    <svg width="40" height="40" viewBox="0 0 40 40">
-        <defs>
-            <linearGradient id="logoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stop-color="#ff4444"/>
-                <stop offset="100%" stop-color="#ff0000"/>
-            </linearGradient>
-        </defs>
-        <rect width="40" height="40" rx="10" fill="url(#logoGrad)"/>
-        <path d="M12 12 L28 28 M12 28 L28 12" stroke="#ffffff" stroke-width="3" stroke-linecap="round"/>
-    </svg>
+    <div style="font-size: 48px; line-height: 1; display: flex; align-items: center; justify-content: center;">🎢</div>
 `;
 
 const title = document.createElement('div');
 title.innerHTML = `
     <h1 style="margin: 0; font-size: 24px; font-weight: 800;">
-        <span class="gradient-text">TENSORTRADE</span>
+        <span class="gradient-text">🎢 TENSORTRADE</span>
         <span style="color: #8899aa; font-size: 14px; font-weight: 400; margin-left: 10px;">INTELLIGENT TRADING ANALYST</span>
     </h1>
 `;
@@ -513,10 +504,8 @@ const createCard = (title, content, options = {}) => {
 const assistantContent = document.createElement('div');
 assistantContent.innerHTML = `
     <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 20px;">
-        <div style="width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(135deg, #ff4444, #ff0000); display: flex; align-items: center; justify-content: center;">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
-                <path d="M19 4L5 20M5 4L19 20" stroke-linecap="round"/>
-            </svg>
+        <div style="width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(135deg, #ff4444, #ff0000); display: flex; align-items: center; justify-content: center; font-size: 28px;">
+            🤖
         </div>
         <div>
             <div style="font-size: 16px; font-weight: 600; color: #ffffff;">AI Assistant</div>
