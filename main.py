@@ -308,8 +308,24 @@ async def analyze_asset(asset: str, user_id: Optional[str] = "default_user"):
         logger.info(f"Analysis complete for {asset}")
         return response
         
+    except ValueError as e:
+        # Handle configuration errors (like missing API keys)
+        error_msg = str(e)
+        logger.error(f"Configuration error for {asset}: {error_msg}")
+        
+        if "API key" in error_msg or "LLM" in error_msg:
+            raise HTTPException(
+                status_code=503,
+                detail={
+                    "error": "LLM services unavailable",
+                    "message": "The analysis system requires LLM API keys to function. Please contact the administrator.",
+                    "technical_details": error_msg
+                }
+            )
+        raise HTTPException(status_code=400, detail=error_msg)
+        
     except Exception as e:
-        logger.error(f"Analysis failed for {asset}: {e}")
+        logger.error(f"Analysis failed for {asset}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
 
 

@@ -28,6 +28,24 @@ class DebateEngine:
     """5-agent debate system for market analysis."""
     
     def __init__(self):
+        # Validate API keys are available
+        if not settings.OPENROUTER_API_KEY and not settings.MISTRAL_API_KEY and not settings.GEMINI_API_KEY and not settings.GROQ_API_KEY:
+            logger.error("❌ NO LLM API KEYS CONFIGURED")
+            logger.error("Please set at least one of: OPENROUTER_API_KEY, MISTRAL_API_KEY, GEMINI_API_KEY, GROQ_API_KEY")
+            raise ValueError(
+                "No LLM API keys configured. Please set environment variables:\n"
+                "  - OPENROUTER_API_KEY (recommended - supports multiple models)\n"
+                "  - MISTRAL_API_KEY\n"
+                "  - GEMINI_API_KEY\n"
+                "  - GROQ_API_KEY"
+            )
+        
+        logger.info("Initializing 5-agent debate system...")
+        logger.info(f"✓ OpenRouter: {'configured' if settings.OPENROUTER_API_KEY else 'not set'}")
+        logger.info(f"✓ Mistral: {'configured' if settings.MISTRAL_API_KEY else 'not set'}")
+        logger.info(f"✓ Gemini: {'configured' if settings.GEMINI_API_KEY else 'not set'}")
+        logger.info(f"✓ Groq: {'configured' if settings.GROQ_API_KEY else 'not set'}")
+        
         # Create 5 LLM instances - diverse providers
         # You can customize which models to use by editing this configuration
         self.llm_providers = {
@@ -35,30 +53,41 @@ class DebateEngine:
                 provider_type="openrouter",
                 api_key=settings.OPENROUTER_API_KEY,
                 model="mistralai/mistral-7b-instruct"
-            ),
+            ) if settings.OPENROUTER_API_KEY else None,
             "🔬 Micro Forensic": LLMClient(
                 provider_type="openrouter",
                 api_key=settings.OPENROUTER_API_KEY,
                 model="gryphe/mythomax-l2-13b"
-            ),
+            ) if settings.OPENROUTER_API_KEY else None,
             "💧 Flow Detective": LLMClient(
                 provider_type="openrouter",
                 api_key=settings.OPENROUTER_API_KEY,
                 model="mistralai/mistral-7b-instruct"
-            ),
+            ) if settings.OPENROUTER_API_KEY else None,
             "📊 Tech Interpreter": LLMClient(
                 provider_type="openrouter",
                 api_key=settings.OPENROUTER_API_KEY,
                 model="gryphe/mythomax-l2-13b"
-            ),
+            ) if settings.OPENROUTER_API_KEY else None,
             "🤔 Skeptic": LLMClient(
                 provider_type="mistral",
                 api_key=settings.MISTRAL_API_KEY
-            ) if settings.MISTRAL_API_KEY else LLMClient(
-                provider_type="gemini",
-                api_key=settings.GEMINI_API_KEY
+            ) if settings.MISTRAL_API_KEY else (
+                LLMClient(
+                    provider_type="gemini",
+                    api_key=settings.GEMINI_API_KEY
+                ) if settings.GEMINI_API_KEY else None
             ),
         }
+        
+        # Remove None values (agents without API keys)
+        self.llm_providers = {k: v for k, v in self.llm_providers.items() if v is not None}
+        
+        if not self.llm_providers:
+            raise ValueError("No valid LLM providers initialized. Check API keys.")
+        
+        logger.info(f"✓ Initialized {len(self.llm_providers)} agents")
+
     
     async def debate_move_async(self, symbol: str, economic_context: str = "") -> Dict:
         """
