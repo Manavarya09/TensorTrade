@@ -2,7 +2,7 @@
   "version": 2,
   "builds": [
     {
-      "src": "api/minimal.py",
+      "src": "api/index.py",
       "use": "@vercel/python"
     },
     {
@@ -21,27 +21,27 @@
     },
     {
       "src": "/api/(.*)",
-      "dest": "api/minimal.py"
+      "dest": "api/index.py"
     },
     {
       "src": "/health",
-      "dest": "api/minimal.py"
+      "dest": "api/index.py"
     },
     {
       "src": "/analyze-asset",
-      "dest": "api/minimal.py"
+      "dest": "api/index.py"
     },
     {
       "src": "/run-agents",
-      "dest": "api/minimal.py"
+      "dest": "api/index.py"
     },
     {
       "src": "/docs",
-      "dest": "api/minimal.py"
+      "dest": "api/index.py"
     },
     {
       "src": "/openapi.json",
-      "dest": "api/minimal.py"
+      "dest": "api/index.py"
     },
     {
       "src": "/",
