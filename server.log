@@ -1,0 +1,92 @@
+INFO:     Started server process [2714]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:33910 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33922 - "GET / HTTP/1.1" 404 Not Found
+INFO:services.asset_validator:✓ Symbol 'AAPL' validated successfully (Type: EQUITY)
+INFO:main:Starting automated analysis for AAPL (user: test_user)
+INFO:services.trade_history:Fetching trade history for test_user on AAPL
+INFO:services.trade_history:Generated 3 synthetic trades for AAPL
+INFO:main:Found 3 trades for AAPL
+INFO:main:Economic events: Economic calendar: Federal Reserve policy meeting this month; Quarterly earnings season in progress;...
+INFO:main:Auto-selected persona: analytical
+INFO:main:Running BehaviorMonitorAgent...
+INFO:main:✓ BehaviorMonitorAgent completed
+INFO:main:Running MarketWatcherAgent...
+INFO:main:Economic calendar: Economic calendar: Federal Reserve policy meeting this month; Quarterly earnings season in progress;...
+INFO:main:Running LLM council analysis for AAPL...
+ERROR:llm_council.services.debate_engine:❌ NO LLM API KEYS CONFIGURED
+ERROR:llm_council.services.debate_engine:Please set at least one of: OPENROUTER_API_KEY, MISTRAL_API_KEY, GEMINI_API_KEY, GROQ_API_KEY
+ERROR:llm_council.services.debate_engine:Cannot initialize LLM council: No LLM API keys configured. Please set environment variables:
+  - OPENROUTER_API_KEY (recommended - supports multiple models)
+  - MISTRAL_API_KEY
+  - GEMINI_API_KEY
+  - GROQ_API_KEY
+INFO:main:Council analysis complete: 0 agents analyzed AAPL
+INFO:main:✓ MarketWatcherAgent completed
+INFO:main:Running NarratorAgent...
+INFO:main:✓ NarratorAgent completed
+INFO:main:Running PersonaAgent...
+INFO:main:✓ PersonaAgent completed
+INFO:main:Running ModeratorAgent...
+INFO:main:✓ ModeratorAgent completed
+INFO:services.market_metrics:VIX fetched: 21.21
+INFO:services.market_metrics:Volatility for AAPL: 27.19%
+INFO:main:Market metrics: VIX=21.21, Regime=HIGH VOLATILITY, Risk Index=25
+INFO:main:Analysis complete for AAPL
+WARNING: Groq API key not found. Set 'groq_api' environment variable.
+WARNING: Mistral API key not found. Set 'MISTRAL_API_KEY' environment variable.
+Checked paths: /app/agents/.env and /app/agents/../.env
+X post: 🚀 AAPL just moved 0.00%! Market analysis shows interesting signals. #Trading #Markets
+LinkedIn post: Market Analysis Update: AAPL moved 0.00%. Our 5-agent LLM council has completed analysis.
+OpenRouter API error: 502 Server Error: Bad Gateway for url: https://openrouter.ai/api/v1/chat/completions
+Moderation for x: {'verdict': 'WARN', 'reason': 'API error or invalid response.'}
+OpenRouter API error: 502 Server Error: Bad Gateway for url: https://openrouter.ai/api/v1/chat/completions
+Moderation for linkedin: {'verdict': 'WARN', 'reason': 'API error or invalid response.'}
+INFO:     127.0.0.1:33934 - "POST /analyze-asset?asset=AAPL&user_id=test_user HTTP/1.1" 200 OK
+INFO:main:Starting agent pipeline for SPY moved up 1.5% on strong jobs report
+INFO:main:Running BehaviorMonitorAgent...
+INFO:main:✓ BehaviorMonitorAgent completed
+INFO:main:Running MarketWatcherAgent...
+INFO:main:Economic calendar: Economic calendar: Federal Reserve policy meeting this month; Quarterly earnings season in progress;...
+INFO:main:Running LLM council analysis for AAPL...
+ERROR:llm_council.services.debate_engine:❌ NO LLM API KEYS CONFIGURED
+ERROR:llm_council.services.debate_engine:Please set at least one of: OPENROUTER_API_KEY, MISTRAL_API_KEY, GEMINI_API_KEY, GROQ_API_KEY
+ERROR:llm_council.services.debate_engine:Cannot initialize LLM council: No LLM API keys configured. Please set environment variables:
+  - OPENROUTER_API_KEY (recommended - supports multiple models)
+  - MISTRAL_API_KEY
+  - GEMINI_API_KEY
+  - GROQ_API_KEY
+INFO:main:Council analysis complete: 0 agents analyzed AAPL
+INFO:main:✓ MarketWatcherAgent completed
+INFO:main:Running NarratorAgent...
+INFO:main:✓ NarratorAgent completed
+INFO:main:Running PersonaAgent...
+INFO:main:✓ PersonaAgent completed
+INFO:main:Running ModeratorAgent...
+INFO:main:✓ ModeratorAgent completed
+WARNING: Groq API key not found. Set 'groq_api' environment variable.
+WARNING: Mistral API key not found. Set 'MISTRAL_API_KEY' environment variable.
+Checked paths: /app/agents/.env and /app/agents/../.env
+X post: 🚀 AAPL just moved 0.00%! Market analysis shows interesting signals. #Trading #Markets
+LinkedIn post: Market Analysis Update: AAPL moved 0.00%. Our 5-agent LLM council has completed analysis.
+OpenRouter API error: 502 Server Error: Bad Gateway for url: https://openrouter.ai/api/v1/chat/completions
+Moderation for x: {'verdict': 'WARN', 'reason': 'API error or invalid response.'}
+OpenRouter API error: 502 Server Error: Bad Gateway for url: https://openrouter.ai/api/v1/chat/completions
+Moderation for linkedin: {'verdict': 'WARN', 'reason': 'API error or invalid response.'}
+INFO:     127.0.0.1:33942 - "POST /run-agents HTTP/1.1" 200 OK
+INFO:     127.0.0.1:35012 - "GET /analyze-asset-stream?asset=AAPL HTTP/1.1" 200 OK
+INFO:services.trade_history:Fetching trade history for default_user on AAPL
+INFO:services.trade_history:Generated 5 synthetic trades for AAPL
+ERROR:llm_council.services.debate_engine:❌ NO LLM API KEYS CONFIGURED
+ERROR:llm_council.services.debate_engine:Please set at least one of: OPENROUTER_API_KEY, MISTRAL_API_KEY, GEMINI_API_KEY, GROQ_API_KEY
+ERROR:llm_council.services.debate_engine:Cannot initialize LLM council: No LLM API keys configured. Please set environment variables:
+  - OPENROUTER_API_KEY (recommended - supports multiple models)
+  - MISTRAL_API_KEY
+  - GEMINI_API_KEY
+  - GROQ_API_KEY
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [2714]

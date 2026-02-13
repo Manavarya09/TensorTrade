@@ -4,7 +4,7 @@ Each agent provides real-time analysis from different perspectives.
 """
 
 import logging
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, AsyncGenerator
 from datetime import datetime
 import asyncio
 import json
@@ -89,6 +89,133 @@ class DebateEngine:
         logger.info(f"✓ Initialized {len(self.llm_providers)} agents")
 
     
+    async def debate_stream_async(self, symbol: str, economic_context: str = "") -> AsyncGenerator[Dict, None]:
+        """
+        Run 5-agent debate on a market move, yielding results as they complete.
+        Returns an AsyncGenerator that yields Dicts with 'type' and 'data'.
+        """
+        yield {"type": "status", "message": f"Fetching market data for {symbol}..."}
+
+        # Get market data
+        price_data = self._get_market_data(symbol)
+        yield {"type": "market_data", "data": price_data}
+
+        move_pct = price_data.get("change_percent", 0.8)
+        move_direction = "UP" if move_pct > 0 else "DOWN"
+        current_price = price_data.get("price", 100)
+        volume = price_data.get("volume", 50000000)
+
+        logger.info(f"Stream Debating {symbol}: {move_pct:.2f}% {move_direction}")
+
+        # Context for all agents
+        market_context = f"""
+Current Price: ${current_price:.2f}
+Move Today: {move_direction} {abs(move_pct):.2f}%
+Trading Volume: {volume:,}
+Symbol: {symbol}
+
+ECONOMIC CALENDAR & NEWS:
+{economic_context if economic_context else "No scheduled economic events."}
+
+Provide a realistic analysis from your agent perspective. Be specific, use data-driven reasoning.
+Include 3-4 supporting points with concrete details.
+Consider the economic calendar events when evaluating market drivers.
+"""
+
+        # Define agents
+        agents = [
+            {"name": "🦅 Macro Hawk", "role": "Macroeconomic analyst", "temperature": 0.6},
+            {"name": "🔬 Micro Forensic", "role": "Fundamental analyst", "temperature": 0.6},
+            {"name": "💧 Flow Detective", "role": "Market microstructure expert", "temperature": 0.7},
+            {"name": "📊 Tech Interpreter", "role": "Technical analyst", "temperature": 0.7},
+            {"name": "🤔 Skeptic", "role": "Critical risk analyst", "temperature": 0.8}
+        ]
+
+        yield {"type": "status", "message": f"Starting 5-agent debate council..."}
+        logger.info(f"Starting stream analysis for {len(agents)} agents...")
+
+        # Create tasks for all agents
+        tasks = []
+        for agent in agents:
+            # We wrap the call to attach agent metadata to the task if needed,
+            # but getting the result directly is easier.
+            task = asyncio.create_task(
+                self._get_agent_argument_async(
+                    symbol=symbol,
+                    agent_name=agent["name"],
+                    market_context=market_context,
+                    move_pct=move_pct,
+                    move_direction=move_direction,
+                    temperature=agent["temperature"]
+                )
+            )
+            tasks.append(task)
+
+        # Collect results as they complete
+        agent_arguments = []
+
+        # Use as_completed to yield results as soon as they are ready
+        for future in asyncio.as_completed(tasks):
+            try:
+                arg = await future
+                agent_arguments.append(arg)
+
+                # Convert Pydantic model to dict
+                arg_data = arg.model_dump() if hasattr(arg, "model_dump") else arg.dict()
+
+                yield {
+                    "type": "agent_result",
+                    "agent": arg.agent_name,
+                    "data": arg_data
+                }
+                logger.info(f"✓ Stream: {arg.agent_name} completed")
+
+            except Exception as e:
+                logger.error(f"Stream Agent failed: {e}")
+                yield {"type": "error", "message": str(e)}
+
+        # Build final consensus
+        yield {"type": "status", "message": "Synthesizing debate results..."}
+
+        consensus_points = self._build_consensus(agent_arguments, symbol)
+        disagreement_points = self._build_disagreements(agent_arguments, symbol)
+
+        judge_summary = self._build_judge_summary(
+            agent_arguments=agent_arguments,
+            symbol=symbol,
+            move_pct=move_pct,
+            move_direction=move_direction,
+            consensus_points=consensus_points
+        )
+
+        # Prepare final result structure (matching standard output)
+        final_result = {
+            "symbol": symbol,
+            "timestamp": datetime.utcnow().isoformat(),
+            "agent_arguments": [
+                (arg.model_dump() if hasattr(arg, "model_dump") else arg.dict())
+                for arg in agent_arguments
+            ],
+            "consensus_points": [
+                (cp.model_dump() if hasattr(cp, "model_dump") else cp.dict())
+                for cp in consensus_points
+            ],
+            "disagreement_points": [
+                (dp.model_dump() if hasattr(dp, "model_dump") else dp.dict())
+                for dp in disagreement_points
+            ],
+            "judge_summary": judge_summary,
+            "market_context": {
+                "price": current_price,
+                "move_pct": move_pct,
+                "move_direction": move_direction,
+                "volume": volume,
+            }
+        }
+
+        yield {"type": "debate_complete", "data": final_result}
+
+
     async def debate_move_async(self, symbol: str, economic_context: str = "") -> Dict:
         """
         Run 5-agent debate on a market move using REAL LLM calls.
@@ -510,3 +637,20 @@ async def get_council_analysis(symbol: str, economic_context: str = "") -> Dict:
                 "volume": 0
             }
         }
+
+async def get_council_analysis_stream(symbol: str, economic_context: str = "") -> AsyncGenerator[Dict, None]:
+    """
+    Get 5-agent council analysis stream for a symbol.
+    Yields status updates and partial results.
+    """
+    try:
+        engine = DebateEngine()
+        async for chunk in engine.debate_stream_async(symbol, economic_context):
+            yield chunk
+    except ValueError as e:
+        error_msg = str(e)
+        logger.error(f"Cannot initialize LLM council: {error_msg}")
+        yield {"type": "error", "message": f"LLM Council Unavailable: {error_msg}"}
+    except Exception as e:
+        logger.error(f"Streaming error: {e}")
+        yield {"type": "error", "message": f"Streaming failed: {str(e)}"}

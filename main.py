@@ -1,9 +1,12 @@
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, AsyncGenerator
 import asyncio
 import logging
+import json
+from datetime import datetime, timedelta
 
 # Import agents
 from agents.behaviour_agent import BehaviorMonitorAgent
@@ -12,7 +15,7 @@ from agents.persona import PersonaAgent
 from agents.moderator import ModeratorAgent
 
 # Import LLM Council
-from llm_council.services.debate_engine import get_council_analysis
+from llm_council.services.debate_engine import get_council_analysis, get_council_analysis_stream
 
 # Import services
 from services.economic_calendar import EconomicCalendarService
@@ -24,6 +27,25 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Multi-Agent Trading Psychology API")
+
+# Simple in-memory cache
+ANALYSIS_CACHE = {}
+CACHE_TTL = timedelta(minutes=10)
+
+def get_cached_analysis(symbol: str) -> Optional[dict]:
+    if symbol in ANALYSIS_CACHE:
+        entry = ANALYSIS_CACHE[symbol]
+        if datetime.utcnow() - entry['timestamp'] < CACHE_TTL:
+            return entry['data']
+        else:
+            del ANALYSIS_CACHE[symbol]
+    return None
+
+def set_cached_analysis(symbol: str, data: dict):
+    ANALYSIS_CACHE[symbol] = {
+        'timestamp': datetime.utcnow(),
+        'data': data
+    }
 
 # Add CORS middleware to allow frontend requests
 app.add_middleware(
@@ -142,6 +164,214 @@ class RunAgentsRequest(BaseModel):
     market_event: str
     user_trades: List[Trade]
     persona_style: str = "professional"
+
+
+@app.get("/analyze-asset-stream")
+async def analyze_asset_stream(asset: str, user_id: Optional[str] = "default_user"):
+    """
+    Streaming endpoint for real-time analysis updates.
+    Yields NDJSON (newline delimited JSON) events.
+    """
+
+    async def event_generator() -> AsyncGenerator[str, None]:
+        nonlocal asset
+        # Check cache first
+        cached = get_cached_analysis(asset.upper())
+        if cached:
+            yield json.dumps({"type": "status", "message": "Using cached analysis (fast path)..."}) + "\n"
+            await asyncio.sleep(0.5) # Simulate slight delay for UX
+            yield json.dumps({"type": "complete", "data": cached}) + "\n"
+            return
+
+        yield json.dumps({"type": "status", "message": f"Validating symbol {asset}..."}) + "\n"
+
+        # Validate asset
+        is_valid, error_msg = validate_asset_symbol(asset)
+        if not is_valid:
+            yield json.dumps({"type": "error", "message": error_msg}) + "\n"
+            return
+
+        asset = asset.strip().upper()
+        context = {"asset": asset, "user_id": user_id}
+
+        try:
+            # 1. Fetch Trade History
+            yield json.dumps({"type": "status", "message": "Fetching trade history..."}) + "\n"
+            trade_service = get_trade_history_service()
+            trade_summary = trade_service.get_trading_summary(asset, user_id)
+            user_trades = trade_summary["trades"]
+
+            # Auto-select persona
+            persona_style = trade_service.auto_select_persona(user_trades)
+            context.update({
+                "user_trades": user_trades,
+                "trade_summary": trade_summary,
+                "persona_style": persona_style
+            })
+
+            yield json.dumps({
+                "type": "trade_history",
+                "data": trade_summary,
+                "persona": persona_style
+            }) + "\n"
+
+            # 2. Economic Calendar
+            yield json.dumps({"type": "status", "message": "Scanning economic calendar..."}) + "\n"
+            economic_service = EconomicCalendarService()
+            economic_data = economic_service.get_stock_events(asset)
+            economic_summary = economic_service.get_market_summary(asset)
+
+            context.update({
+                "economic_calendar": economic_data,
+                "economic_summary": economic_summary
+            })
+
+            yield json.dumps({
+                "type": "economic_data",
+                "data": economic_data
+            }) + "\n"
+
+            # 3. Behavior Analysis
+            yield json.dumps({"type": "status", "message": "Analyzing behavioral patterns..."}) + "\n"
+            behavior_agent = BehaviorMonitorAgent()
+            # Note: BehaviorMonitorAgent usually runs sync, but we can wrap it or just call it
+            # The original code called it via run/run_async method of the agent instance
+            # We'll re-use the agent interface if possible, or just call behavior agent methods
+            # Let's assume standard agent interface:
+            context = behavior_agent.run(context)
+
+            yield json.dumps({
+                "type": "behavior_analysis",
+                "data": {
+                    "flags": context.get("behavior_flags", []),
+                    "insights": context.get("insights", [])
+                }
+            }) + "\n"
+
+            # 4. LLM Council Debate (Streaming)
+            yield json.dumps({"type": "status", "message": "Convening 5-agent LLM Council..."}) + "\n"
+
+            council_debate_result = None
+            market_opinions = []
+
+            # Stream the debate
+            async for chunk in get_council_analysis_stream(asset, economic_summary):
+                if chunk["type"] == "debate_complete":
+                    council_debate_result = chunk["data"]
+                    # Extract opinions for next agents
+                    for arg in council_debate_result["agent_arguments"]:
+                        # Handle both dict and object
+                        if isinstance(arg, dict):
+                            opinion = f"{arg['agent_name']} ({arg['confidence']}): {arg['thesis']}"
+                        else:
+                            opinion = f"{arg.agent_name} ({arg.confidence.value}): {arg.thesis}"
+                        market_opinions.append(opinion)
+
+                # Forward the chunk to the client
+                yield json.dumps(chunk) + "\n"
+
+            if not council_debate_result:
+                yield json.dumps({"type": "error", "message": "Council debate failed to return results"}) + "\n"
+                return
+
+            context["market_opinions"] = market_opinions
+            context["council_debate"] = council_debate_result
+            context["consensus_points"] = [cp['statement'] if isinstance(cp, dict) else cp.statement for cp in council_debate_result["consensus_points"]]
+            context["disagreement_topics"] = [dp['topic'] if isinstance(dp, dict) else dp.topic for dp in council_debate_result["disagreement_points"]]
+            context["judge_summary"] = council_debate_result["judge_summary"]
+
+            mc = council_debate_result["market_context"]
+            context["price_change_pct"] = f"{abs(mc['move_pct']):.2f}"
+            context["move_direction"] = mc["move_direction"]
+            context["current_price"] = mc["price"]
+            context["volume"] = mc["volume"]
+
+            # 5. Narrator, Persona, Moderator
+            yield json.dumps({"type": "status", "message": "Generating strategic narrative..."}) + "\n"
+
+            agent_flow = [
+                ("NarratorAgent", NarratorAgent, False),
+                ("PersonaAgent", PersonaAgent, False),
+                ("ModeratorAgent", ModeratorAgent, False)
+            ]
+
+            for agent_name, agent_cls, is_async in agent_flow:
+                try:
+                    agent = agent_cls()
+                    if is_async:
+                        context = await agent.run_async(context)
+                    else:
+                        context = agent.run(context)
+                except Exception as e:
+                    logger.error(f"{agent_name} failed: {e}")
+
+            # 6. Calculate Metrics
+            metrics_service = get_market_metrics_service()
+            market_metrics = metrics_service.get_all_metrics(
+                symbol=asset,
+                agent_data={
+                    "consensus_points": context.get("consensus_points", []),
+                    "disagreement_topics": context.get("disagreement_topics", []),
+                    "council_opinions": context.get("market_opinions", [])
+                }
+            )
+
+            # 7. Final Response Construction
+            final_response = {
+                "asset": asset,
+                "user_id": user_id,
+                "analysis_type": "automated",
+                "persona_selected": persona_style,
+                "market_metrics": {
+                    "vix": market_metrics["vix"],
+                    "market_regime": market_metrics["market_regime"],
+                    "risk_index": market_metrics["risk_index"],
+                    "asset_volatility": market_metrics["asset_volatility"],
+                    "risk_level": metrics_service.get_risk_level_description(market_metrics["risk_index"]),
+                    "regime_color": metrics_service.get_regime_color(market_metrics["market_regime"])
+                },
+                "trade_history": {
+                    "total_trades": trade_summary["total_trades"],
+                    "total_pnl": trade_summary["total_pnl"],
+                    "win_rate": trade_summary["win_rate"],
+                    "last_trade": trade_summary.get("last_trade")
+                },
+                "economic_calendar": {
+                    "earnings": economic_data.get("earnings_calendar", {}),
+                    "recent_news": economic_data.get("recent_news", [])[:3],
+                    "economic_events": economic_data.get("economic_events", []),
+                    "summary": economic_summary
+                },
+                "behavioral_analysis": {
+                    "flags": context.get("behavior_flags", []),
+                    "insights": context.get("insights", [])
+                },
+                "market_analysis": {
+                    "council_opinions": context.get("market_opinions", []),
+                    "consensus": context.get("consensus_points", []),
+                    "disagreements": context.get("disagreement_topics", []),
+                    "judge_summary": context.get("judge_summary", ""),
+                    "market_context": context["council_debate"]["market_context"]
+                },
+                "narrative": {
+                    "summary": context.get("summary", ""),
+                    "styled_message": context.get("final_message", ""),
+                    "moderated_output": context.get("moderated_output", "")
+                },
+                "persona_post": context.get("persona_post", {"x": "", "linkedin": ""}),
+                "timestamp": datetime.utcnow().isoformat()
+            }
+
+            # Cache the result
+            set_cached_analysis(asset, final_response)
+
+            yield json.dumps({"type": "complete", "data": final_response}) + "\n"
+
+        except Exception as e:
+            logger.error(f"Stream error: {e}", exc_info=True)
+            yield json.dumps({"type": "error", "message": str(e)}) + "\n"
+
+    return StreamingResponse(event_generator(), media_type="application/x-ndjson")
 
 
 @app.post("/analyze-asset")

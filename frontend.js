@@ -8,6 +8,57 @@ const API_BASE_URL = window.location.hostname === 'localhost' || window.location
 let currentAnalysisData = null;
 let isAnalyzing = false;
 let currentPersonaPosts = { x: '', linkedin: '' };
+let isDemoMode = false;
+
+const DEMO_DATA = {
+    "asset": "AAPL",
+    "market_metrics": {
+        "vix": 18.5,
+        "market_regime": "BULLISH VOLATILE",
+        "risk_index": 65,
+        "risk_level": "ELEVATED",
+        "regime_color": "#ffbb44"
+    },
+    "market_analysis": {
+        "council_opinions": [
+            "🦅 Macro Hawk (High): Fed pivot priced in, yield curve steepening favors growth.",
+            "🔬 Micro Forensic (Moderate): Margins compressing but services revenue +12% YoY.",
+            "💧 Flow Detective (High): Massive call gamma squeeze at $180 strike.",
+            "📊 Tech Interpreter (Moderate): Bull flag breakout on 4H chart targeting $185.",
+            "🤔 Skeptic (Low): Valuation stretched at 32x PE, watch for rug pull."
+        ],
+        "consensus": ["Bullish short-term", "High volatility expected"],
+        "market_context": {
+            "price": 178.45,
+            "move_direction": "UP",
+            "change_pct": "2.3",
+            "volume": 85000000
+        }
+    },
+    "narrative": {
+        "styled_message": "Listen up. The market is handing you a gift with this volatility, but don't get greedy. Technicals scream breakout, but that risk index at 65 means chop is incoming. Stick to the plan or get wrecked.",
+        "persona_selected": "Coach"
+    },
+    "behavioral_analysis": {
+        "flags": [
+            { "pattern": "FOMO", "message": "Chasing breakout candles" },
+            { "pattern": "Overtrading", "message": "15 trades in 2 hours" }
+        ]
+    },
+    "trade_history": {
+        "total_trades": 42,
+        "win_rate": 58.5,
+        "total_pnl": 1250.50
+    },
+    "economic_calendar": {
+        "summary": "CPI data released lower than expected, fueling rate cut bets.",
+        "economic_events": ["CPI YoY 2.9% vs 3.1% exp", "FOMC Meeting Minutes"]
+    },
+    "persona_post": {
+        "x": "AAPL breaking out! 🚀 Fed pivot incoming? Watch $185. #trading #stocks",
+        "linkedin": "Market analysis for AAPL suggests strong bullish momentum..."
+    }
+};
 
 // Share to X Function
 function shareToX() {
@@ -362,6 +413,11 @@ style.textContent = `
     }
 `;
 
+// Load TradingView Lightweight Charts
+const tvScript = document.createElement('script');
+tvScript.src = 'https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js';
+document.head.appendChild(tvScript);
+
 document.head.appendChild(style);
 
 // Header
@@ -516,7 +572,12 @@ assistantContent.innerHTML = `
         <div style="font-size: 12px; color: #ff8888; margin-bottom: 5px;">Asset Symbol:</div>
         <input id="asset-input" type="text" placeholder="e.g. AAPL, SPY, TSLA" style="width: 100%; padding: 10px; background: rgba(255, 68, 68, 0.1); border: 1px solid rgba(255, 68, 68, 0.2); border-radius: 6px; color: #ffffff; font-size: 13px; margin-bottom: 10px;" value="AAPL">
         <div style="font-size: 12px; color: #ff8888; margin-bottom: 5px;">User ID (optional):</div>
-        <input id="user-id-input" type="text" placeholder="e.g. trader_123" style="width: 100%; padding: 10px; background: rgba(255, 68, 68, 0.1); border: 1px solid rgba(255, 68, 68, 0.2); border-radius: 6px; color: #ffffff; font-size: 13px;" value="dashboard_user">
+        <input id="user-id-input" type="text" placeholder="e.g. trader_123" style="width: 100%; padding: 10px; background: rgba(255, 68, 68, 0.1); border: 1px solid rgba(255, 68, 68, 0.2); border-radius: 6px; color: #ffffff; font-size: 13px; margin-bottom: 15px;" value="dashboard_user">
+
+        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+            <input type="checkbox" id="demo-mode-toggle" style="accent-color: #ff4444;">
+            <span style="font-size: 13px; color: #8899aa;">Demo Mode (Mock Data)</span>
+        </label>
     </div>
     <button id="analyze-btn" style="width: 100%; padding: 12px; background: linear-gradient(135deg, #ff4444, #ff0000); border: none; border-radius: 8px; color: white; font-weight: 600; cursor: pointer; transition: all 0.3s ease;">
         GENERATE ANALYSIS REPORT
@@ -693,6 +754,28 @@ rightPanel.style.cssText = `
     gap: 20px;
 `;
 
+// Play Narrative Audio
+function playNarrative() {
+    if (!currentAnalysisData || !currentAnalysisData.narrative) return;
+
+    const text = currentAnalysisData.narrative.styled_message || currentAnalysisData.narrative.summary;
+    if (!text) return;
+
+    // Stop existing speech
+    window.speechSynthesis.cancel();
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 1.0;
+    utterance.pitch = 1.0;
+
+    // Try to find a good voice
+    const voices = window.speechSynthesis.getVoices();
+    const preferredVoice = voices.find(v => v.name.includes('Google US English') || v.name.includes('Samantha'));
+    if (preferredVoice) utterance.voice = preferredVoice;
+
+    window.speechSynthesis.speak(utterance);
+}
+
 // AI Strategy Card (Narrative & Summary)
 const strategyContent = document.createElement('div');
 strategyContent.id = 'strategy-content';
@@ -705,6 +788,9 @@ strategyContent.innerHTML = `
                     <div style="font-size: 14px; font-weight: 600; color: #ffffff;">AI NARRATIVE</div>
                 </div>
                 <div style="display: flex; gap: 8px;">
+                    <button onclick="playNarrative()" title="Listen" style="background: rgba(0, 0, 0, 0.8); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 6px; padding: 6px 12px; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.3s ease;" onmouseover="this.style.background='rgba(255, 255, 255, 0.1)';" onmouseout="this.style.background='rgba(0, 0, 0, 0.8)';">
+                        <span style="font-size: 14px;">🔊</span>
+                    </button>
                     <button onclick="shareToX()" title="Share on X" style="background: rgba(0, 0, 0, 0.8); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 6px; padding: 6px 12px; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.3s ease;" onmouseover="this.style.background='rgba(29, 161, 242, 0.2)';" onmouseout="this.style.background='rgba(0, 0, 0, 0.8)';">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="#1DA1F2">
                             <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
@@ -735,12 +821,14 @@ strategyContent.innerHTML = `
 
 rightPanel.appendChild(createCard('AI STRATEGY', strategyContent));
 
-// Asset Impact Matrix (Market Context)
+// Asset Impact Matrix (Market Context & Chart)
 const matrixContent = document.createElement('div');
 matrixContent.id = 'matrix-content';
 matrixContent.innerHTML = `
     <div style="display: flex; flex-direction: column; gap: 15px;">
-        <div id="market-context" style="font-size: 12px; color: #8899aa; margin-bottom: 10px;">
+        <div id="chart-container" style="height: 250px; width: 100%; background: rgba(0,0,0,0.2); border-radius: 8px;"></div>
+
+        <div id="market-context" style="font-size: 12px; color: #8899aa; margin-bottom: 5px;">
             MARKET CONTEXT - Awaiting data...
         </div>
         <div id="economic-events" style="display: flex; flex-direction: column; gap: 10px;">
@@ -752,6 +840,79 @@ matrixContent.innerHTML = `
 `;
 
 rightPanel.appendChild(createCard('ASSET IMPACT MATRIX', matrixContent, { minHeight: '400px' }));
+
+// Chart initialization function
+let chart = null;
+let candleSeries = null;
+
+function initChart() {
+    const container = document.getElementById('chart-container');
+    if (!container || !window.LightweightCharts) return;
+
+    // Clean up previous chart
+    container.innerHTML = '';
+
+    chart = LightweightCharts.createChart(container, {
+        width: container.clientWidth,
+        height: 250,
+        layout: {
+            background: { type: 'solid', color: 'transparent' },
+            textColor: '#8899aa',
+        },
+        grid: {
+            vertLines: { color: 'rgba(42, 46, 57, 0.5)' },
+            horzLines: { color: 'rgba(42, 46, 57, 0.5)' },
+        },
+        timeScale: {
+            borderColor: 'rgba(42, 46, 57, 0.6)',
+        },
+        rightPriceScale: {
+            borderColor: 'rgba(42, 46, 57, 0.6)',
+        },
+    });
+
+    candleSeries = chart.addCandlestickSeries({
+        upColor: '#44ff88',
+        downColor: '#ff4444',
+        borderVisible: false,
+        wickUpColor: '#44ff88',
+        wickDownColor: '#ff4444',
+    });
+
+    // Generate dummy data for visual effect
+    const data = [];
+    let price = 100;
+    const now = new Date();
+    for (let i = 0; i < 100; i++) {
+        const time = new Date(now.getTime() - (100 - i) * 86400000);
+        const open = price;
+        const close = price + (Math.random() - 0.5) * 5;
+        const high = Math.max(open, close) + Math.random() * 2;
+        const low = Math.min(open, close) - Math.random() * 2;
+
+        data.push({
+            time: time.toISOString().split('T')[0],
+            open: open,
+            high: high,
+            low: low,
+            close: close
+        });
+
+        price = close;
+    }
+
+    candleSeries.setData(data);
+
+    // Responsive resize
+    new ResizeObserver(entries => {
+        if (entries.length === 0 || entries[0].target !== container) { return; }
+        const newRect = entries[0].contentRect;
+        chart.applyOptions({ width: newRect.width, height: newRect.height });
+    }).observe(container);
+}
+
+// Call initChart after DOM load
+setTimeout(initChart, 1000);
 
 // Behavioral Insights Card (Trade History & Behavioral Flags)
 const behavioralContent = document.createElement('div');
@@ -934,6 +1095,7 @@ async function runAnalysis() {
     
     const asset = document.getElementById('asset-input').value.trim();
     const userId = document.getElementById('user-id-input').value.trim() || 'dashboard_user';
+    const isDemo = document.getElementById('demo-mode-toggle').checked;
     
     if (!asset) {
         alert('Please enter an asset symbol');
@@ -945,62 +1107,168 @@ async function runAnalysis() {
     const statusEl = document.getElementById('assistant-status');
     
     // Update UI to show loading state
-    analyzeBtn.textContent = 'ANALYZING... (60-120s)';
+    analyzeBtn.textContent = 'ANALYZING...';
     analyzeBtn.disabled = true;
     analyzeBtn.style.opacity = '0.6';
-    statusEl.textContent = 'Running 5-agent LLM council...';
+    statusEl.textContent = 'Initializing agents...';
     statusEl.style.color = '#ff8888';
     
+    // Reset council opinions
+    document.getElementById('council-opinions').innerHTML = `
+        <div style="text-align: center; padding: 40px; color: #8899aa;">
+            <div style="font-size: 48px; margin-bottom: 15px; animation: pulse 1s infinite;">🤖</div>
+            <div style="font-size: 16px;">Processing real-time data...</div>
+        </div>
+    `;
+
+    // DEMO MODE HANDLER
+    if (isDemo) {
+        console.log("Running in DEMO MODE");
+        statusEl.textContent = 'DEMO: Simulating analysis...';
+        
+        // Simulate streaming delays
+        const steps = [
+            "Fetching market data...",
+            "Running Macro Hawk...",
+            "Running Micro Forensic...",
+            "Running Flow Detective...",
+            "Running Tech Interpreter...",
+            "Running Skeptic...",
+            "Synthesizing Narrative..."
+        ];
+
+        for (const step of steps) {
+            statusEl.textContent = step;
+            await new Promise(r => setTimeout(r, 800)); // 800ms delay per step
+        }
+        
+        const demoData = JSON.parse(JSON.stringify(DEMO_DATA));
+        demoData.asset = asset; // Use entered asset
+        currentAnalysisData = demoData;
+
+        updateDashboard(demoData);
+        statusEl.textContent = 'Analysis Complete ✓';
+        statusEl.style.color = '#44ff88';
+        
+        isAnalyzing = false;
+        analyzeBtn.textContent = 'GENERATE ANALYSIS REPORT';
+        analyzeBtn.disabled = false;
+        analyzeBtn.style.opacity = '1';
+        return;
+    }
+
     try {
-        const response = await fetch(`${API_BASE_URL}/analyze-asset?asset=${encodeURIComponent(asset)}&user_id=${encodeURIComponent(userId)}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            }
-        });
+        const response = await fetch(`${API_BASE_URL}/analyze-asset-stream?asset=${encodeURIComponent(asset)}&user_id=${encodeURIComponent(userId)}`);
         
         if (!response.ok) {
-            // Handle validation errors (400) specially
-            if (response.status === 400) {
-                const errorData = await response.json();
-                const errorMsg = errorData.detail || 'Invalid asset symbol';
-                throw new Error(`❌ ${errorMsg}\n\nPlease enter a valid stock symbol (e.g., AAPL, SPY, TSLA)`);
+             throw new Error(`API Error: ${response.status}`);
+        }
+        
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop(); // Keep incomplete line in buffer
+
+            for (const line of lines) {
+                if (!line.trim()) continue;
+                try {
+                    const event = JSON.parse(line);
+                    handleStreamEvent(event, statusEl);
+                } catch (e) {
+                    console.error("Error parsing JSON stream:", e);
+                }
             }
-            throw new Error(`API Error: ${response.status}`);
         }
-        
-        currentAnalysisData = await response.json();
-        
-        // Debug: Log the entire response to see structure
-        console.log('Full API Response:', currentAnalysisData);
-        
-        // Store persona posts for sharing
-        if (currentAnalysisData.persona_post) {
-            currentPersonaPosts = {
-                x: currentAnalysisData.persona_post.x || '',
-                linkedin: currentAnalysisData.persona_post.linkedin || ''
-            };
-            console.log('Persona posts loaded:', currentPersonaPosts);
-        } else {
-            console.warn('No persona_post found in response. Keys available:', Object.keys(currentAnalysisData));
-        }
-        
-        updateDashboard(currentAnalysisData);
         
         statusEl.textContent = 'Analysis Complete ✓';
         statusEl.style.color = '#44ff88';
         
     } catch (error) {
         console.error('Analysis failed:', error);
-        alert(`Analysis failed: ${error.message}\n\nMake sure the API server is running on ${API_BASE_URL}`);
-        statusEl.textContent = 'Analysis Failed - Check Console';
+        statusEl.textContent = 'Analysis Failed';
         statusEl.style.color = '#ff4444';
+        alert(`Analysis failed: ${error.message}`);
     } finally {
         isAnalyzing = false;
         analyzeBtn.textContent = 'GENERATE ANALYSIS REPORT';
         analyzeBtn.disabled = false;
         analyzeBtn.style.opacity = '1';
     }
+}
+
+function handleStreamEvent(event, statusEl) {
+    console.log("Stream Event:", event);
+
+    if (event.type === 'status') {
+        statusEl.textContent = event.message;
+    }
+    else if (event.type === 'agent_result') {
+        // Light up an agent in the council view
+        addAgentOpinion(event.agent, event.data);
+    }
+    else if (event.type === 'trade_history') {
+        // Update trade stats partially
+        // (optional: could implement partial UI updates)
+    }
+    else if (event.type === 'complete' || event.type === 'final_result') {
+        currentAnalysisData = event.data;
+        updateDashboard(event.data);
+
+        // Cache persona posts
+        if (event.data.persona_post) {
+            currentPersonaPosts = event.data.persona_post;
+        }
+    }
+    else if (event.type === 'error') {
+        statusEl.textContent = `Error: ${event.message}`;
+        statusEl.style.color = '#ff4444';
+    }
+}
+
+function addAgentOpinion(agentName, agentData) {
+    const councilDiv = document.getElementById('council-opinions');
+
+    // Clear waiting message if it's the first agent
+    if (councilDiv.innerHTML.includes('Awaiting Analysis') || councilDiv.innerHTML.includes('Processing real-time')) {
+        councilDiv.innerHTML = '';
+    }
+
+    const agentEmojis = {'🦅 Macro Hawk': '🦅', '🔬 Micro Forensic': '🔬', '💧 Flow Detective': '💧', '📊 Tech Interpreter': '📊', '🤔 Skeptic': '🤔'};
+    const emoji = agentEmojis[agentName] || '🤖';
+
+    const div = document.createElement('div');
+    div.style.cssText = `
+        display: flex;
+        gap: 15px;
+        padding: 15px;
+        background: rgba(255, 68, 68, 0.03);
+        border-radius: 8px;
+        border: 1px solid rgba(255, 68, 68, 0.1);
+        animation: fadeIn 0.5s ease;
+        margin-bottom: 15px;
+    `;
+
+    div.innerHTML = `
+        <div style="font-size: 32px; min-width: 50px;">${emoji}</div>
+        <div style="flex: 1;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <div style="font-size: 14px; font-weight: 600; color: #44aaff;">${agentName}</div>
+                <div style="background: rgba(68, 170, 255, 0.1); color: #44aaff; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; border: 1px solid rgba(68, 170, 255, 0.2);">
+                    CONFIDENCE: ${agentData.confidence.toUpperCase()}
+                </div>
+            </div>
+            <div style="font-size: 13px; color: #ffffff; line-height: 1.6;">${agentData.thesis}</div>
+        </div>
+    `;
+
+    councilDiv.appendChild(div);
 }
 
 function updateDashboard(data) {
@@ -1061,6 +1329,9 @@ function updateDashboard(data) {
                     <div style="font-size: 14px; font-weight: 600; color: #ffffff;">AI NARRATIVE (${data.persona_selected.toUpperCase()})</div>
                 </div>
                 <div style="display: flex; gap: 8px;">
+                    <button onclick="playNarrative()" title="Listen" style="background: rgba(0, 0, 0, 0.8); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 6px; padding: 6px 12px; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.3s ease;" onmouseover="this.style.background='rgba(255, 255, 255, 0.1)';" onmouseout="this.style.background='rgba(0, 0, 0, 0.8)';">
+                        <span style="font-size: 14px;">🔊</span>
+                    </button>
                     <button onclick="shareToX()" title="Share on X" style="background: rgba(0, 0, 0, 0.8); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 6px; padding: 6px 12px; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.3s ease;" onmouseover="this.style.background='rgba(29, 161, 242, 0.2)';" onmouseout="this.style.background='rgba(0, 0, 0, 0.8)';">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="#1DA1F2">
                             <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
