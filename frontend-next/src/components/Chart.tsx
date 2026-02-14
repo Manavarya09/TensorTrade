@@ -58,6 +58,7 @@ export const Chart: React.FC<ChartProps> = ({ data }) => {
       window.removeEventListener('resize', handleResize);
       chart.remove();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {

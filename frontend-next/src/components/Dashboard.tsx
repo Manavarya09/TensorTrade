@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Chart } from './Chart';
-import { CandlestickData } from 'lightweight-charts';
+// import { CandlestickData } from 'lightweight-charts'; // Not used directly in this file but keep import if needed elsewhere
 
 // API Configuration
 const API_BASE_URL = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
@@ -72,7 +72,9 @@ export default function Dashboard() {
     const [isDemo, setIsDemo] = useState(false);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [statusMessage, setStatusMessage] = useState('READY FOR ANALYSIS');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [analysisData, setAnalysisData] = useState<any>(null);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [councilOpinions, setCouncilOpinions] = useState<any[]>([]);
     const [theme, setTheme] = useState<'light' | 'dark'>('light');
     const [showLanding, setShowLanding] = useState(true);
@@ -99,7 +101,7 @@ export default function Dashboard() {
             if (response.ok) {
                 // Initial check logic if needed
             }
-        } catch (error) {
+        } catch {
             console.log('Could not check API health');
         }
     };
@@ -191,15 +193,17 @@ export default function Dashboard() {
 
             setStatusMessage('ANALYSIS COMPLETE [OK]');
 
-        } catch (error: any) {
+        } catch (error) {
             console.error('Analysis failed:', error);
             setStatusMessage('ANALYSIS FAILED');
-            alert(`Analysis failed: ${error.message}`);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            alert(`Analysis failed: ${(error as any).message}`);
         } finally {
             setIsAnalyzing(false);
         }
     };
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const handleStreamEvent = (event: any) => {
         if (event.type === 'status') {
             setStatusMessage(event.message.toUpperCase());
@@ -209,15 +213,10 @@ export default function Dashboard() {
         }
         else if (event.type === 'council_debate' || (event.type === 'debate_stream' && event.data)) { // Adjust based on actual API
              // The stream logic in main.py yields chunks.
-             // We need to adapt based on how `main.py` actually yields.
-             // Looking at `main.py`, it yields chunks from `get_council_analysis_stream`.
-             // And then `complete` event with full data.
         }
         else if (event.type === 'complete' || event.type === 'final_result') {
             setAnalysisData(event.data);
             if(event.data.market_analysis && event.data.market_analysis.council_opinions) {
-                 // Parse simple strings back to objects for display consistency if needed
-                 // The original code just mapped strings.
                  const opinions = event.data.market_analysis.council_opinions.map((op: string, idx: number) => {
                      const agentNames = ['Macro Hawk', 'Micro Forensic', 'Flow Detective', 'Tech Interpreter', 'Skeptic'];
                      return {
@@ -231,15 +230,6 @@ export default function Dashboard() {
         }
         else if (event.type === 'error') {
             setStatusMessage(`ERROR: ${event.message}`);
-        }
-
-        // Handle streaming debate chunks if `main.py` sends them (it seems to send `debate_complete` or chunks).
-        // The original `frontend.js` checked `event.type === 'agent_result'` calling `addAgentOpinion`.
-        // But `main.py` yields whatever `get_council_analysis_stream` yields.
-        // Let's assume standard behavior.
-
-        if (event.type === 'agent_thought' || event.type === 'agent_result') {
-             // Adapt to your stream format
         }
     };
 
@@ -255,9 +245,6 @@ export default function Dashboard() {
         summaryContent += `Symbol: ${symbol}\n`;
         summaryContent += `Persona: ${data.persona_selected ? data.persona_selected.toUpperCase() : 'N/A'}\n`;
         summaryContent += `\n${'='.repeat(80)}\n\n`;
-
-        // ... (rest of summary generation logic similar to original)
-        // For brevity implementing key parts
         summaryContent += JSON.stringify(data, null, 2);
 
         const blob = new Blob([summaryContent], { type: 'text/markdown' });
@@ -286,40 +273,37 @@ export default function Dashboard() {
          window.open('https://twitter.com/intent/tweet?text=' + encodeURIComponent(text), '_blank');
     };
 
-    const shareToLinkedIn = () => {
-         const text = analysisData?.persona_post?.linkedin;
-         if(!text) return;
-         navigator.clipboard.writeText(text).then(() => alert('Copied to clipboard for LinkedIn!'));
-    };
-
     if (showLanding) {
         return (
-            <div id="landing-page">
-                <h1 className="landing-title">TENSORTRADE<br/>MARKET MAP</h1>
-                <div className="landing-subtitle">MULTI-AGENT INTELLIGENCE NETWORK</div>
+            <div id="landing-page" className="flex flex-col items-center justify-center min-h-screen bg-[var(--bg-primary)] p-8">
+                <div className="border-[6px] border-[var(--text-primary)] p-12 text-center bg-white dark:bg-black shadow-[12px_12px_0px_#000]">
+                    <h1 className="text-6xl font-black mb-4 tracking-tighter uppercase font-mono">TensorTrade</h1>
+                    <div className="text-xl font-bold mb-8 uppercase tracking-widest bg-[var(--text-primary)] text-[var(--bg-primary)] p-2">
+                        Multi-Agent Intelligence Network
+                    </div>
 
-                <div className="market-map-container">
-                    <div className="market-map-grid">
+                    <div className="grid grid-cols-4 gap-4 max-w-4xl mx-auto my-8">
                         {["AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "TSLA", "META", "BRK.B", "LLY", "AVGO", "V", "JPM"].map(sym => {
                             const change = (Math.random() * 6 - 3).toFixed(2);
                             const isUp = parseFloat(change) >= 0;
                             return (
-                                <div key={sym} className={`map-block ${isUp ? 'up' : 'down'}`} onClick={() => {
-                                    setAsset(sym);
-                                    setShowLanding(false);
-                                    // setTimeout(runAnalysis, 500); // Optional auto-run
-                                }}>
-                                    <div className="map-symbol">{sym}</div>
-                                    <div className="map-change">{isUp ? '+' : ''}{change}%</div>
+                                <div key={sym}
+                                     className={`border-2 border-black p-4 cursor-pointer hover:bg-[var(--accent-neon)] hover:translate-y-[-4px] hover:shadow-[4px_4px_0px_black] transition-all bg-[var(--bg-secondary)] flex flex-col items-center justify-center aspect-square`}
+                                     onClick={() => {
+                                        setAsset(sym);
+                                        setShowLanding(false);
+                                    }}>
+                                    <div className="font-black text-xl">{sym}</div>
+                                    <div className={`text-sm font-bold ${isUp ? 'text-green-600' : 'text-red-600'}`}>{isUp ? '+' : ''}{change}%</div>
                                 </div>
                             );
                         })}
                     </div>
-                </div>
 
-                <div style={{ marginTop: '40px' }}>
-                    <button id="init-system-btn" className="btn-primary" onClick={() => setShowLanding(false)}>
-                        ENTER DASHBOARD
+                    <button
+                        className="brutal-btn text-2xl px-12 py-4 mt-8 bg-[var(--accent-pink)] text-white hover:text-black border-4 border-black"
+                        onClick={() => setShowLanding(false)}>
+                        ENTER SYSTEM_
                     </button>
                 </div>
             </div>
@@ -327,171 +311,169 @@ export default function Dashboard() {
     }
 
     return (
-        <div id="dashboard-container" className="app-container">
-            <header className="header">
-                <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-                    <div className="header-logo">[TENSOR]</div>
+        <div id="dashboard-container" className="min-h-screen p-4 md:p-8 font-mono bg-[var(--bg-primary)]">
+            {/* Header */}
+            <header className="flex flex-col md:flex-row justify-between items-center border-b-4 border-black pb-4 mb-8">
+                <div className="flex items-center gap-4">
+                    <div className="text-4xl font-black bg-black text-white p-2 border-2 border-white transform -rotate-2 shadow-[4px_4px_0px_black]">
+                        [TENSOR]
+                    </div>
                     <div>
-                        <h1 style={{ margin: 0, fontSize: '24px', fontWeight: 800 }}>
-                            <span>TENSORTRADE</span>
-                            <span style={{ color: 'var(--text-color)', fontSize: '14px', fontWeight: 400, marginLeft: '10px' }}>
-                                INTELLIGENT TRADING ANALYST
-                            </span>
+                        <h1 className="text-2xl font-black tracking-tighter m-0">
+                            TENSORTRADE <span className="text-sm bg-[var(--accent-neon)] px-2 py-1 text-black font-bold ml-2">V3.0.0</span>
                         </h1>
+                        <p className="text-xs uppercase tracking-widest font-bold">Intelligent Trading Analyst</p>
                     </div>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center' }}>
-                    <div className="status-indicator">
-                        <span className="status-dot"></span>
-                        LIVE MARKETS • REALTIME ANALYSIS
+                <div className="flex items-center gap-4 mt-4 md:mt-0">
+                    <div className="flex items-center gap-2 border-2 border-black px-4 py-2 bg-[var(--bg-secondary)] font-bold text-xs uppercase">
+                        <span className={`w-3 h-3 ${isAnalyzing ? 'bg-[var(--accent-alert)] animate-pulse' : 'bg-[var(--accent-neon)]'} border border-black`}></span>
+                        {statusMessage}
                     </div>
-                    <button className="theme-toggle" style={{ marginLeft: '10px' }} onClick={toggleTheme}>
-                        {theme === 'dark' ? 'LIGHT MODE' : 'DARK MODE'}
+                    <button className="brutal-btn py-2 px-4 text-xs bg-white" onClick={toggleTheme}>
+                        {theme === 'dark' ? 'LIGHT_MODE' : 'DARK_MODE'}
                     </button>
                 </div>
             </header>
 
-            <div className="dashboard-grid">
-                {/* Left Panel */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            {/* Main Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+
+                {/* Left Column: Controls */}
+                <div className="col-span-1 md:col-span-3 flex flex-col gap-6">
                     {/* Assistant Card */}
-                    <div className="card">
-                        <div className="card-header">
-                            <h3 className="card-title">ASSISTANT</h3>
+                    <div className="brutal-card bg-[var(--bg-secondary)] relative">
+                        <div className="absolute -top-3 -right-3 bg-black text-white px-2 py-1 text-xs font-bold transform rotate-3">
+                            AI_CORE
                         </div>
-                        <div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '20px' }}>
-                                <div style={{ width: '48px', height: '48px', border: '2px solid var(--text-color)', background: 'var(--bg-color)', color: 'var(--text-color)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', fontWeight: 700 }}>
-                                    [AI]
+                        <h3 className="brutal-header text-lg mb-4 p-2 bg-black text-white inline-block w-full text-center">
+                            {'// SYSTEM_INPUT'}
+                        </h3>
+
+                        <div className="flex flex-col gap-4">
+                            <div className="flex items-center gap-2 border-b-2 border-black pb-2 mb-2">
+                                <div className="w-12 h-12 bg-black text-white flex items-center justify-center font-black text-xl border-2 border-white">
+                                    AI
                                 </div>
-                                <div>
-                                    <div style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-color)' }}>AI ASSISTANT</div>
-                                    <div style={{ fontSize: '12px', color: 'var(--text-color)' }}>{statusMessage}</div>
+                                <div className="text-xs font-bold leading-tight">
+                                    STATUS: {statusMessage}<br/>
+                                    ID: {userId}
                                 </div>
                             </div>
-                            <div className="input-group">
-                                <div className="input-label">ASSET SYMBOL:</div>
+
+                            <div className="flex flex-col gap-1">
+                                <label className="text-xs font-bold uppercase bg-[var(--accent-neon)] inline-block w-fit px-1 border border-black">Asset Symbol</label>
                                 <input
                                     type="text"
-                                    className="input-field"
-                                    placeholder="e.g. AAPL, SPY, TSLA"
+                                    className="brutal-input text-xl font-bold uppercase tracking-widest text-center"
+                                    placeholder="AAPL"
                                     value={asset}
                                     onChange={(e) => setAsset(e.target.value.toUpperCase())}
                                 />
                             </div>
-                            <div className="input-group">
-                                <div className="input-label">USER ID:</div>
+
+                            <div className="flex flex-col gap-1">
+                                <label className="text-xs font-bold uppercase bg-[var(--bg-primary)] inline-block w-fit px-1 border border-black">User ID</label>
                                 <input
                                     type="text"
-                                    className="input-field"
-                                    placeholder="e.g. trader_123"
+                                    className="brutal-input text-sm"
+                                    placeholder="trader_123"
                                     value={userId}
                                     onChange={(e) => setUserId(e.target.value)}
                                 />
                             </div>
-                            <div style={{ marginBottom: '15px' }}>
-                                <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
-                                    <input
-                                        type="checkbox"
-                                        style={{ accentColor: 'var(--accent-color)' }}
-                                        checked={isDemo}
-                                        onChange={(e) => setIsDemo(e.target.checked)}
-                                    />
-                                    <span style={{ fontSize: '13px', color: 'var(--text-color)' }}>DEMO MODE (MOCK DATA)</span>
-                                </label>
-                            </div>
+
+                            <label className="flex items-center gap-2 cursor-pointer border-2 border-black p-2 hover:bg-[var(--accent-neon)] transition-colors">
+                                <input
+                                    type="checkbox"
+                                    className="w-5 h-5 border-2 border-black rounded-none appearance-none checked:bg-black"
+                                    checked={isDemo}
+                                    onChange={(e) => setIsDemo(e.target.checked)}
+                                />
+                                <span className="text-xs font-bold uppercase">Enable Demo Mode (Mock Data)</span>
+                            </label>
+
                             <button
-                                className="btn-primary"
-                                style={{ width: '100%', fontSize: '1rem' }}
+                                className="brutal-btn w-full bg-black text-white hover:bg-[var(--accent-pink)] hover:text-black border-white"
                                 onClick={runAnalysis}
                                 disabled={isAnalyzing}
                             >
-                                {isAnalyzing ? 'ANALYZING...' : 'GENERATE REPORT'}
+                                {isAnalyzing ? 'PROCESSING...' : 'INITIATE_ANALYSIS()'}
                             </button>
                         </div>
                     </div>
 
-                    {/* Analysis Setup Card */}
-                    <div className="card" style={{ minHeight: '300px' }}>
-                        <div className="card-header">
-                            <h3 className="card-title">ANALYSIS SETUP</h3>
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                            <div>
-                                <div style={{ fontSize: '12px', marginBottom: '8px' }}>MARKET REGIME</div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                    <div style={{ padding: '8px 16px', border: '1px solid var(--text-color)' }}>
-                                        <div style={{ fontSize: '18px', fontWeight: 700, color: analysisData?.market_metrics?.risk_index > 50 ? '#ff0000' : 'var(--text-color)' }}>
-                                            {analysisData?.market_metrics?.market_regime || 'LOADING...'}
-                                        </div>
-                                    </div>
-                                    <div style={{ fontSize: '12px', border: '1px solid var(--text-color)', padding: '4px 10px' }}>
-                                        VIX: {analysisData?.market_metrics?.vix || '--'}
-                                    </div>
+                    {/* Metrics Card */}
+                    <div className="brutal-card">
+                        <h3 className="brutal-header text-sm p-1 bg-[var(--bg-secondary)] border border-black text-black w-full text-center mb-4">
+                            METRICS_OVERVIEW
+                        </h3>
+                        <div className="flex flex-col gap-4">
+                            <div className="border-2 border-black p-2 bg-[var(--bg-secondary)]">
+                                <div className="text-[10px] font-bold uppercase mb-1">Market Regime</div>
+                                <div className={`text-xl font-black uppercase ${analysisData?.market_metrics?.risk_index > 50 ? 'text-[var(--accent-alert)]' : 'text-black'}`}>
+                                    {analysisData?.market_metrics?.market_regime || 'WAITING...'}
                                 </div>
                             </div>
-                            <div>
-                                <div style={{ fontSize: '12px', marginBottom: '8px' }}>RISK INDEX</div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                                    <div style={{ flex: 1 }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-                                            <span style={{ fontSize: '12px' }}>CURRENT</span>
-                                            <span style={{ fontSize: '16px', fontWeight: 700, color: 'var(--accent-color)' }}>
-                                                {analysisData?.market_metrics?.risk_index || '--'}/100
-                                            </span>
-                                        </div>
-                                        <div className="risk-meter-container">
-                                            <div className="risk-meter-fill" style={{ width: `${analysisData?.market_metrics?.risk_index || 0}%` }}></div>
-                                        </div>
-                                    </div>
+
+                            <div className="border-2 border-black p-2">
+                                <div className="flex justify-between items-end mb-1">
+                                    <span className="text-[10px] font-bold uppercase">Risk Index</span>
+                                    <span className="text-2xl font-black">{analysisData?.market_metrics?.risk_index || '00'}</span>
+                                </div>
+                                <div className="h-4 w-full border-2 border-black bg-white relative">
+                                    <div
+                                        className="h-full bg-[var(--accent-alert)] transition-all duration-500"
+                                        style={{ width: `${analysisData?.market_metrics?.risk_index || 0}%` }}
+                                    ></div>
+                                </div>
+                            </div>
+
+                             <div className="grid grid-cols-2 gap-2">
+                                <div className="border-2 border-black p-2 text-center bg-[var(--bg-secondary)]">
+                                    <div className="text-2xl font-black">{analysisData?.market_metrics?.vix || '--'}</div>
+                                    <div className="text-[10px] font-bold uppercase">VIX Score</div>
+                                </div>
+                                <div className="border-2 border-black p-2 text-center bg-[var(--bg-secondary)]">
+                                    <div className="text-2xl font-black">{analysisData?.shariah_compliance?.score || '--'}</div>
+                                    <div className="text-[10px] font-bold uppercase">Shariah</div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                {/* Center Panel */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                    {/* Market Drivers */}
-                    <div className="card">
-                        <div className="card-header">
-                            <h3 className="card-title">KEY MARKET DRIVERS</h3>
+                {/* Center Column: Data Feed */}
+                <div className="col-span-1 md:col-span-6 flex flex-col gap-6">
+                    {/* Live Feed */}
+                    <div className="brutal-card min-h-[400px]">
+                        <div className="flex justify-between items-center border-b-4 border-black pb-2 mb-4">
+                            <h3 className="text-xl font-black uppercase bg-[var(--accent-neon)] px-2 border-2 border-black shadow-[4px_4px_0px_black]">
+                                AGENT_COUNCIL_FEED
+                            </h3>
                             {analysisData && (
-                                <button
-                                    className="btn-primary"
-                                    style={{ padding: '4px 12px', fontSize: '12px' }}
-                                    onClick={downloadSummary}
-                                >
-                                    DOWNLOAD SUMMARY
+                                <button className="text-xs font-bold underline hover:bg-black hover:text-white px-2" onClick={downloadSummary}>
+                                    [DOWNLOAD_LOGS]
                                 </button>
                             )}
                         </div>
-                        <div style={{ display: 'grid', gap: '15px' }}>
+
+                        <div className="flex flex-col gap-4 max-h-[600px] overflow-y-auto pr-2">
                             {councilOpinions.length === 0 ? (
-                                <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-color)' }}>
-                                    <div style={{ fontSize: '32px', marginBottom: '15px' }}>
-                                        {isAnalyzing ? '[PROCESSING]' : '[WAITING]'}
-                                    </div>
-                                    <div style={{ fontSize: '16px', marginBottom: '10px' }}>
-                                        {isAnalyzing ? 'PROCESSING REAL-TIME DATA...' : 'AWAITING ANALYSIS'}
-                                    </div>
+                                <div className="flex flex-col items-center justify-center h-64 border-2 border-dashed border-gray-400 opacity-50">
+                                    <div className="text-4xl font-black animate-pulse">[NO_DATA]</div>
+                                    <div className="text-sm font-bold mt-2">AWAITING INPUT STREAM...</div>
                                 </div>
                             ) : (
                                 councilOpinions.map((op, idx) => {
-                                    const agentTags = ['[HAWK]', '[FORENSIC]', '[FLOW]', '[TECH]', '[SKEPTIC]'];
                                     return (
-                                        <div key={idx} className="opinion-item animate-fade-in" style={{ animationDelay: `${idx * 0.1}s` }}>
-                                            <div style={{ fontSize: '14px', fontWeight: 700, minWidth: '80px' }}>
-                                                {agentTags[idx] || '[AGENT]'}
+                                        <div key={idx} className="border-2 border-black p-0 shadow-[4px_4px_0px_rgba(0,0,0,0.2)] hover:translate-x-1 hover:shadow-none transition-all">
+                                            <div className="flex justify-between items-center bg-black text-white p-2 border-b-2 border-black">
+                                                <span className="font-bold text-xs uppercase tracking-widest">{op.agentName}</span>
+                                                <span className="text-[10px] border border-white px-1">CONFIDENCE: {op.confidence || 'HIGH'}</span>
                                             </div>
-                                            <div style={{ flex: 1 }}>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                                                    <div style={{ fontSize: '14px', fontWeight: 600 }}>{op.agentName}</div>
-                                                    <div style={{ border: '1px solid var(--text-color)', padding: '2px 8px', fontSize: '10px', fontWeight: 700 }}>
-                                                        LLM COUNCIL
-                                                    </div>
-                                                </div>
-                                                <div style={{ fontSize: '13px', lineHeight: 1.6 }}>{op.thesis}</div>
+                                            <div className="p-4 bg-white text-sm font-mono leading-relaxed">
+                                                {op.thesis}
                                             </div>
                                         </div>
                                     );
@@ -500,155 +482,91 @@ export default function Dashboard() {
                         </div>
                     </div>
 
-                    {/* Live Intelligence */}
-                    <div className="card">
-                        <div className="card-header">
-                            <h3 className="card-title">LIVE INTELLIGENCE</h3>
+                    {/* Chart Container */}
+                     <div className="brutal-card p-0 overflow-hidden">
+                        <div className="bg-black text-white p-2 text-xs font-bold flex justify-between items-center">
+                            <span>ASSET_VISUALIZER_V1</span>
+                            <span>{asset}</span>
                         </div>
-                        <div>
-                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <div>
-                                    <div style={{ fontSize: '14px', fontWeight: 600 }}>LIVE MARKET INTELLIGENCE</div>
-                                    <div style={{ fontSize: '12px' }}>AI search for real-time news & data.</div>
-                                </div>
-                                <button className="btn-primary" style={{ padding: '8px 16px', fontSize: '12px' }}>
-                                    RUN LIVE ANALYSIS
-                                </button>
-                            </div>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginTop: '10px' }}>
-                                <div style={{ border: '1px solid var(--text-color)', padding: '20px' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                                        <div style={{ fontSize: '16px', fontWeight: 700 }}>SPX500</div>
-                                        <div style={{ fontSize: '14px', color: 'var(--text-color)' }}>+0.8%</div>
-                                    </div>
-                                    <div style={{ fontSize: '13px', lineHeight: 1.5 }}>Testing psychological 7,000 level.</div>
-                                </div>
-                                <div style={{ border: '1px solid var(--text-color)', padding: '20px' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                                        <div style={{ fontSize: '16px', fontWeight: 700 }}>US100</div>
-                                        <div style={{ fontSize: '14px', color: 'var(--accent-color)' }}>-1.2%</div>
-                                    </div>
-                                    <div style={{ fontSize: '13px', lineHeight: 1.5 }}>Tech-heavy index under pressure.</div>
-                                </div>
-                            </div>
+                        <div className="border-b-2 border-black p-4 bg-[var(--bg-secondary)]">
+                            <Chart />
                         </div>
+                         {analysisData?.market_analysis?.market_context && (
+                             <div className="p-2 text-xs font-mono bg-[var(--accent-neon)] text-black border-t-2 border-black flex justify-between">
+                                <span>PRICE: ${analysisData.market_analysis.market_context.price}</span>
+                                <span>VOL: {analysisData.market_analysis.market_context.volume}</span>
+                                <span>DIR: {analysisData.market_analysis.market_context.move_direction}</span>
+                            </div>
+                         )}
                     </div>
                 </div>
 
-                {/* Right Panel */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                    {/* Strategy */}
-                    <div className="card">
-                        <div className="card-header">
-                            <h3 className="card-title">AI STRATEGY</h3>
+                {/* Right Column: Strategy & Insights */}
+                <div className="col-span-1 md:col-span-3 flex flex-col gap-6">
+                    {/* Narrative Card */}
+                    <div className="brutal-card bg-[var(--accent-pink)] text-white border-black border-4 shadow-[8px_8px_0px_black]">
+                        <h3 className="font-black text-2xl mb-2 bg-white text-black px-2 inline-block border-2 border-black transform -rotate-1">
+                            STRATEGY_CORE
+                        </h3>
+                        <div className="bg-white text-black p-4 border-2 border-black text-sm font-bold leading-relaxed mb-4 min-h-[120px]">
+                             {analysisData?.narrative?.styled_message || analysisData?.narrative?.summary || 'Initializing strategy module...'}
                         </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                            <div style={{ border: '1px solid var(--text-color)', padding: '20px' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '15px' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                        <div style={{ width: '12px', height: '12px', background: 'var(--accent-color)' }}></div>
-                                        <div style={{ fontSize: '14px', fontWeight: 600 }}>AI NARRATIVE</div>
-                                    </div>
-                                    <div style={{ display: 'flex', gap: '8px' }}>
-                                        <button onClick={playNarrative} className="btn-primary" style={{ padding: '4px 10px', fontSize: '12px' }}>[AUDIO]</button>
-                                        <button onClick={shareToX} className="btn-primary" style={{ padding: '4px 10px', fontSize: '12px' }}>[X]</button>
-                                        <button onClick={shareToLinkedIn} className="btn-primary" style={{ padding: '4px 10px', fontSize: '12px' }}>[IN]</button>
-                                    </div>
-                                </div>
-                                <div style={{ fontSize: '13px', lineHeight: 1.6 }}>
-                                    {analysisData?.narrative?.styled_message || analysisData?.narrative?.summary || 'Awaiting analysis...'}
-                                </div>
-                            </div>
-
-                            <div>
-                                <div style={{ fontSize: '12px', marginBottom: '15px' }}>CONSENSUS POINTS</div>
-                                <div>
-                                    {analysisData?.market_analysis?.consensus ? analysisData.market_analysis.consensus.map((point: string, idx: number) => (
-                                        <div key={idx} style={{ display: 'flex', gap: '10px', marginBottom: '10px', padding: '10px', border: '1px solid var(--text-color)' }}>
-                                            <div style={{ fontWeight: 700, fontSize: '14px' }}>[OK]</div>
-                                            <div style={{ fontSize: '13px', lineHeight: 1.5 }}>{point}</div>
-                                        </div>
-                                    )) : <div style={{ fontSize: '13px' }}>No consensus data available yet</div>}
-                                </div>
-                            </div>
+                        <div className="flex gap-2">
+                             <button onClick={playNarrative} className="flex-1 bg-black text-white border-2 border-white hover:bg-white hover:text-black py-1 text-xs font-bold uppercase">
+                                [AUDIO_PLAY]
+                             </button>
+                             <button onClick={shareToX} className="flex-1 bg-black text-white border-2 border-white hover:bg-white hover:text-black py-1 text-xs font-bold uppercase">
+                                [X_POST]
+                             </button>
                         </div>
                     </div>
 
-                    {/* Matrix */}
-                    <div className="card" style={{ minHeight: '400px' }}>
-                         <div className="card-header">
-                            <h3 className="card-title">ASSET IMPACT MATRIX</h3>
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                             <Chart />
-                             <div style={{ fontSize: '12px', marginBottom: '5px' }}>
-                                MARKET CONTEXT - {analysisData?.market_analysis?.market_context ? (
-                                    <span>
-                                        {analysisData.market_analysis.market_context.move_direction} {analysisData.market_analysis.market_context.change_pct}% | Vol: {analysisData.market_analysis.market_context.volume}
-                                    </span>
-                                ) : 'Awaiting data...'}
+                    {/* Behavioral Flags */}
+                    <div className="brutal-card">
+                        <h3 className="brutal-header text-center bg-transparent text-black border-b-4 border-black pb-2 mb-4">
+                            PSYCH_FLAGS
+                        </h3>
+                        {analysisData?.behavioral_analysis?.flags?.length > 0 ? (
+                            <div className="flex flex-col gap-2">
+                                {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+                                {analysisData.behavioral_analysis.flags.map((flag: any, idx: number) => (
+                                    <div key={idx} className="bg-[var(--accent-alert)] text-white p-2 border-2 border-black shadow-[2px_2px_0px_black]">
+                                        <div className="font-black text-xs uppercase border-b border-white pb-1 mb-1">⚠️ {flag.pattern || 'DETECTED'}</div>
+                                        <div className="text-xs font-bold">{flag.message}</div>
+                                    </div>
+                                ))}
                             </div>
-                        </div>
+                        ) : (
+                            <div className="p-4 border-2 border-black bg-[var(--accent-neon)] text-center text-xs font-black uppercase">
+                                NO_FLAGS_DETECTED<br/>[SYSTEM_OPTIMAL]
+                            </div>
+                        )}
                     </div>
 
-                    {/* Behavioral Insights */}
-                    <div className="card">
-                        <div className="card-header">
-                            <h3 className="card-title">BEHAVIORAL INSIGHTS</h3>
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                            {analysisData?.risk_analysis?.metrics && (
-                                <div style={{ border: '1px solid var(--text-color)', padding: '15px' }}>
-                                    <div style={{ fontSize: '12px', color: 'var(--text-color)', marginBottom: '5px' }}>RISK ANALYSIS</div>
-                                    <div style={{ fontSize: '13px', marginBottom: '8px' }}>
-                                        VaR (95%): <b>{analysisData.risk_analysis.metrics.var_95}%</b> | Max DD: <b>{analysisData.risk_analysis.metrics.max_drawdown}%</b>
-                                    </div>
-                                    <div style={{ fontSize: '13px', fontWeight: 700 }}>
-                                        VERDICT: <span style={{ color: 'var(--accent-color)' }}>{analysisData.risk_analysis.qualitative?.verdict}</span>
-                                    </div>
-                                </div>
-                            )}
-
-                             {analysisData?.behavioral_analysis?.flags?.length > 0 ? (
-                                <div style={{ border: '1px solid var(--text-color)', padding: '15px' }}>
-                                    <div style={{ fontSize: '12px', color: 'var(--text-color)', marginBottom: '5px' }}>BEHAVIORAL FLAGS</div>
-                                    {analysisData.behavioral_analysis.flags.map((flag: any, idx: number) => (
-                                        <div key={idx} style={{ marginBottom: '10px', padding: '10px', border: '1px solid var(--accent-color)' }}>
-                                             <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--accent-color)', marginBottom: '5px' }}>{flag.pattern || 'Pattern'}</div>
-                                             <div style={{ fontSize: '13px', lineHeight: 1.5 }}>{flag.message || flag}</div>
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <div style={{ border: '1px solid var(--text-color)', padding: '15px' }}>
-                                    <div style={{ fontSize: '12px', color: 'var(--text-color)', marginBottom: '5px' }}>BEHAVIORAL FLAGS</div>
-                                    <div style={{ fontSize: '13px', lineHeight: 1.5 }}>[OK] No concerning patterns.</div>
-                                </div>
-                            )}
-
-                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '10px' }}>
-                                <div style={{ textAlign: 'center', padding: '15px', border: '1px solid var(--text-color)' }}>
-                                    <div style={{ fontSize: '18px', fontWeight: 700 }}>{analysisData?.trade_history?.total_trades || '-'}</div>
-                                    <div style={{ fontSize: '11px' }}>Total Trades</div>
-                                </div>
-                                <div style={{ textAlign: 'center', padding: '15px', border: '1px solid var(--text-color)' }}>
-                                    <div style={{ fontSize: '18px', fontWeight: 700 }}>{analysisData?.trade_history?.win_rate ? analysisData.trade_history.win_rate.toFixed(1) + '%' : '-'}</div>
-                                    <div style={{ fontSize: '11px' }}>Win Rate</div>
-                                </div>
-                            </div>
-                        </div>
+                     {/* Consensus */}
+                    <div className="brutal-card bg-black text-white">
+                        <h3 className="text-xs font-bold uppercase border-b border-white pb-2 mb-2 text-[var(--accent-neon)]">
+                            &gt; CONSENSUS_POINTS
+                        </h3>
+                        <ul className="text-xs font-mono list-none p-0 m-0">
+                             {analysisData?.market_analysis?.consensus ? analysisData.market_analysis.consensus.map((point: string, idx: number) => (
+                                <li key={idx} className="mb-2 pl-4 relative before:content-['>'] before:absolute before:left-0 before:text-[var(--accent-pink)]">
+                                    {point}
+                                </li>
+                            )) : <li className="text-gray-500">Waiting for consensus...</li>}
+                        </ul>
                     </div>
                 </div>
+
             </div>
 
-            <footer className="footer">
+            {/* Footer */}
+            <footer className="mt-12 border-t-4 border-black pt-4 flex flex-col md:flex-row justify-between items-center text-xs font-bold uppercase tracking-widest opacity-50 hover:opacity-100 transition-opacity">
                 <div>
-                    <div style={{ marginBottom: '5px' }}>DERIV HACKATHON • INTELLIGENT TRADING ANALYST</div>
-                    <div>AI-powered market intelligence platform • Version 1.0</div>
+                    TENSORTRADE_SYSTEM // V3.0.0 // {new Date().getFullYear()}
                 </div>
-                <div style={{ textAlign: 'right' }}>
-                    <div style={{ marginBottom: '5px' }}>Data Sources: Bloomberg • Reuters • MarketWatch • TradingView</div>
-                    <div>Last Updated: {new Date().toLocaleTimeString()}</div>
+                <div className="mt-2 md:mt-0 text-right">
+                    SECURE_CONNECTION: ENCRYPTED // NODE: US-EAST-1
                 </div>
             </footer>
         </div>

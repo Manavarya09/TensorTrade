@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { StyleSheet, Text, View, TextInput, TouchableOpacity, ScrollView, Switch, Alert, Platform } from 'react-native';
 import { WebView } from 'react-native-webview';
 import Chart from './Chart';
@@ -64,7 +64,9 @@ export default function DashboardScreen() {
     const [isDemo, setIsDemo] = useState(false);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [statusMessage, setStatusMessage] = useState('READY');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [analysisData, setAnalysisData] = useState<any>(null);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [councilOpinions, setCouncilOpinions] = useState<any[]>([]);
 
     const runAnalysis = async () => {
@@ -101,6 +103,7 @@ export default function DashboardScreen() {
             setAnalysisData(demoData);
 
             if (demoData.market_analysis && demoData.market_analysis.council_opinions) {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const opinions = demoData.market_analysis.council_opinions.map((op: string, idx: number) => {
                      const agentNames = ['Macro Hawk', 'Micro Forensic', 'Flow Detective', 'Tech Interpreter', 'Skeptic'];
                      return {
@@ -118,8 +121,6 @@ export default function DashboardScreen() {
         }
 
         try {
-            // Use non-streaming endpoint for simplicity on mobile
-            // Or use streaming if possible. Let's try simplified first to ensure it works.
             setStatusMessage('REQUESTING ANALYSIS...');
             const response = await fetch(`${API_BASE_URL}/analyze-asset?asset=${encodeURIComponent(asset)}&user_id=${encodeURIComponent(userId)}`, {
                 method: 'POST'
@@ -132,6 +133,7 @@ export default function DashboardScreen() {
             const data = await response.json();
             setAnalysisData(data);
              if (data.market_analysis && data.market_analysis.council_opinions) {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const opinions = data.market_analysis.council_opinions.map((op: string, idx: number) => {
                      const agentNames = ['Macro Hawk', 'Micro Forensic', 'Flow Detective', 'Tech Interpreter', 'Skeptic'];
                      return {
@@ -144,6 +146,7 @@ export default function DashboardScreen() {
             }
             setStatusMessage('COMPLETE');
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (error: any) {
             console.error('Analysis failed:', error);
             setStatusMessage('FAILED');
@@ -157,40 +160,59 @@ export default function DashboardScreen() {
         <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 40 }}>
             {/* Header */}
             <View style={styles.header}>
-                <Text style={styles.headerTitle}>TENSORTRADE</Text>
-                <View style={styles.statusIndicator}>
-                    <View style={[styles.statusDot, { backgroundColor: isAnalyzing ? '#ffcc00' : '#00ff00' }]} />
-                    <Text style={styles.statusText}>{statusMessage}</Text>
+                <View style={styles.logoBox}>
+                    <Text style={styles.logoText}>[TENSOR]</Text>
+                </View>
+                <View style={{flex: 1, marginLeft: 15}}>
+                    <Text style={styles.headerTitle}>TENSORTRADE</Text>
+                    <Text style={styles.headerSubtitle}>INTELLIGENT TRADING ANALYST</Text>
                 </View>
             </View>
 
+            <View style={styles.statusContainer}>
+                <View style={[styles.statusDot, { backgroundColor: isAnalyzing ? '#ff0000' : '#00ff41' }]} />
+                <Text style={styles.statusText}>STATUS: {statusMessage}</Text>
+            </View>
+
             {/* Input Section */}
-            <View style={styles.card}>
-                <Text style={styles.cardTitle}>ASSISTANT</Text>
+            <View style={styles.brutalCard}>
+                <View style={styles.cardHeader}>
+                    <Text style={styles.cardTitle}>{'// SYSTEM_INPUT'}</Text>
+                </View>
+
                 <View style={styles.inputGroup}>
-                    <Text style={styles.label}>ASSET</Text>
+                    <Text style={styles.label}>ASSET_SYMBOL</Text>
                     <TextInput
-                        style={styles.input}
+                        style={styles.brutalInput}
                         value={asset}
                         onChangeText={t => setAsset(t.toUpperCase())}
                         placeholder="AAPL"
                         placeholderTextColor="#999"
                     />
                 </View>
+
                 <View style={styles.row}>
-                    <Text style={styles.label}>DEMO MODE</Text>
-                    <Switch value={isDemo} onValueChange={setIsDemo} trackColor={{ false: "#767577", true: "#81b0ff" }} thumbColor={isDemo ? "#f5dd4b" : "#f4f3f4"} />
+                     <Text style={styles.label}>DEMO_MODE</Text>
+                    <Switch
+                        value={isDemo}
+                        onValueChange={setIsDemo}
+                        trackColor={{ false: "#ccc", true: "#00ff41" }}
+                        thumbColor={isDemo ? "#000" : "#fff"}
+                    />
                 </View>
-                <TouchableOpacity style={styles.button} onPress={runAnalysis} disabled={isAnalyzing}>
-                    <Text style={styles.buttonText}>{isAnalyzing ? 'ANALYZING...' : 'GENERATE REPORT'}</Text>
+
+                <TouchableOpacity style={styles.brutalButton} onPress={runAnalysis} disabled={isAnalyzing}>
+                    <Text style={styles.buttonText}>{isAnalyzing ? 'PROCESSING...' : 'INITIATE_ANALYSIS()'}</Text>
                 </TouchableOpacity>
             </View>
 
             {/* Analysis Data */}
             {analysisData && (
                 <>
-                    <View style={styles.card}>
-                        <Text style={styles.cardTitle}>MARKET METRICS</Text>
+                    <View style={styles.brutalCard}>
+                        <View style={styles.cardHeader}>
+                            <Text style={styles.cardTitle}>METRICS_OVERVIEW</Text>
+                        </View>
                         <View style={styles.row}>
                             <View style={styles.metricBox}>
                                 <Text style={styles.metricLabel}>REGIME</Text>
@@ -198,41 +220,62 @@ export default function DashboardScreen() {
                                     {analysisData.market_metrics.market_regime}
                                 </Text>
                             </View>
-                            <View style={styles.metricBox}>
-                                <Text style={styles.metricLabel}>RISK</Text>
-                                <Text style={styles.metricValue}>{analysisData.market_metrics.risk_index}/100</Text>
+                        </View>
+                        <View style={styles.metricBarContainer}>
+                            <Text style={styles.metricLabel}>RISK INDEX: {analysisData.market_metrics.risk_index}/100</Text>
+                            <View style={styles.progressBar}>
+                                <View style={[styles.progressFill, { width: `${analysisData.market_metrics.risk_index}%` }]} />
                             </View>
                         </View>
                     </View>
 
-                    <View style={styles.card}>
-                        <Text style={styles.cardTitle}>ASSET IMPACT MATRIX</Text>
-                        <Chart />
+                    <View style={[styles.brutalCard, {padding: 0}]}>
+                        <View style={[styles.cardHeader, {margin: 10}]}>
+                            <Text style={styles.cardTitle}>ASSET_VISUALIZER</Text>
+                        </View>
+                        <View style={{height: 250, backgroundColor: '#eee', borderBottomWidth: 3, borderColor: '#000'}}>
+                             <Chart />
+                        </View>
                          {analysisData.market_analysis && analysisData.market_analysis.market_context && (
-                             <Text style={styles.contextText}>
-                                {analysisData.market_analysis.market_context.move_direction} {analysisData.market_analysis.market_context.change_pct}% | Vol: {analysisData.market_analysis.market_context.volume}
-                             </Text>
+                             <View style={styles.contextBar}>
+                                <Text style={styles.contextText}>
+                                    {analysisData.market_analysis.market_context.move_direction} {analysisData.market_analysis.market_context.change_pct}% | Vol: {analysisData.market_analysis.market_context.volume}
+                                </Text>
+                             </View>
                          )}
                     </View>
 
-                    <View style={styles.card}>
-                        <Text style={styles.cardTitle}>COUNCIL OPINIONS</Text>
+                    <View style={styles.brutalCard}>
+                        <View style={styles.cardHeader}>
+                            <Text style={styles.cardTitle}>COUNCIL_FEED</Text>
+                        </View>
                         {councilOpinions.map((op, idx) => (
                             <View key={idx} style={styles.opinionItem}>
-                                <Text style={styles.agentName}>{op.agentName}</Text>
+                                <View style={styles.opinionHeader}>
+                                    <Text style={styles.agentName}>{op.agentName}</Text>
+                                    <Text style={styles.confidence}>CONF: {op.confidence || 'HIGH'}</Text>
+                                </View>
                                 <Text style={styles.thesis}>{op.thesis}</Text>
                             </View>
                         ))}
                     </View>
 
-                     <View style={styles.card}>
-                        <Text style={styles.cardTitle}>AI NARRATIVE</Text>
-                        <Text style={styles.narrativeText}>
-                            {analysisData.narrative?.styled_message || analysisData.narrative?.summary}
-                        </Text>
+                     <View style={[styles.brutalCard, { backgroundColor: '#ff00ff', borderColor: '#000' }]}>
+                        <View style={[styles.cardHeader, { backgroundColor: '#fff', alignSelf: 'flex-start', transform: [{rotate: '-2deg'}] }]}>
+                            <Text style={styles.cardTitle}>STRATEGY_CORE</Text>
+                        </View>
+                        <View style={styles.narrativeBox}>
+                            <Text style={styles.narrativeText}>
+                                {analysisData.narrative?.styled_message || analysisData.narrative?.summary}
+                            </Text>
+                        </View>
                     </View>
                 </>
             )}
+
+            <View style={styles.footer}>
+                <Text style={styles.footerText}>TENSORTRADE // V3.0.0</Text>
+            </View>
         </ScrollView>
     );
 }
@@ -240,72 +283,109 @@ export default function DashboardScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#f5f5f5',
+        backgroundColor: '#fff',
     },
     header: {
         padding: 20,
         backgroundColor: '#fff',
-        borderBottomWidth: 1,
+        borderBottomWidth: 3,
         borderColor: '#000',
         marginTop: Platform.OS === 'ios' ? 40 : 0,
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    logoBox: {
+        backgroundColor: '#000',
+        padding: 10,
+        transform: [{rotate: '-3deg'}],
+        borderWidth: 2,
+        borderColor: '#00ff41',
+    },
+    logoText: {
+        color: '#fff',
+        fontWeight: '900',
+        fontSize: 18,
     },
     headerTitle: {
         fontSize: 24,
-        fontWeight: '800',
+        fontWeight: '900',
         color: '#000',
+        letterSpacing: -1,
     },
-    statusIndicator: {
+    headerSubtitle: {
+        fontSize: 10,
+        fontWeight: '700',
+        color: '#000',
+        letterSpacing: 2,
+    },
+    statusContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginTop: 5,
+        padding: 10,
+        backgroundColor: '#eee',
+        borderBottomWidth: 3,
+        borderColor: '#000',
     },
     statusDot: {
-        width: 10,
-        height: 10,
-        borderRadius: 5,
-        marginRight: 8,
+        width: 15,
+        height: 15,
+        borderWidth: 2,
+        borderColor: '#000',
+        marginRight: 10,
     },
     statusText: {
         fontSize: 12,
-        color: '#666',
-        fontWeight: '700',
+        color: '#000',
+        fontWeight: '900',
     },
-    card: {
+    brutalCard: {
         backgroundColor: '#fff',
         margin: 15,
-        marginBottom: 0,
+        marginBottom: 5,
         padding: 15,
-        borderWidth: 1,
+        borderWidth: 3,
         borderColor: '#000',
         shadowColor: '#000',
-        shadowOffset: { width: 2, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 2,
-        elevation: 2,
+        shadowOffset: { width: 6, height: 6 },
+        shadowOpacity: 1,
+        shadowRadius: 0,
+        elevation: 0,
+    },
+    cardHeader: {
+        backgroundColor: '#000',
+        paddingVertical: 5,
+        paddingHorizontal: 10,
+        marginBottom: 15,
+        alignSelf: 'flex-start',
     },
     cardTitle: {
         fontSize: 14,
-        fontWeight: '700',
-        marginBottom: 10,
-        color: '#000',
-        letterSpacing: 1,
+        fontWeight: '900',
+        color: '#fff',
+        textTransform: 'uppercase',
     },
     inputGroup: {
         marginBottom: 15,
     },
     label: {
         fontSize: 12,
-        fontWeight: '700',
+        fontWeight: '900',
         marginBottom: 5,
-        color: '#333',
-    },
-    input: {
+        color: '#000',
+        backgroundColor: '#00ff41',
+        alignSelf: 'flex-start',
+        paddingHorizontal: 5,
         borderWidth: 1,
         borderColor: '#000',
-        padding: 10,
-        fontSize: 16,
+    },
+    brutalInput: {
+        borderWidth: 3,
+        borderColor: '#000',
+        padding: 15,
+        fontSize: 18,
+        fontWeight: '700',
         color: '#000',
-        backgroundColor: '#fff',
+        backgroundColor: '#f0f0f0',
     },
     row: {
         flexDirection: 'row',
@@ -313,56 +393,121 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginBottom: 15,
     },
-    button: {
+    brutalButton: {
         backgroundColor: '#000',
         padding: 15,
         alignItems: 'center',
+        borderWidth: 3,
+        borderColor: '#000',
+        shadowColor: '#00ff41', // Using neon green shadow for button
+        shadowOffset: { width: 4, height: 4 },
+        shadowOpacity: 1,
+        shadowRadius: 0,
+        marginTop: 10,
     },
     buttonText: {
         color: '#fff',
-        fontWeight: '700',
-        fontSize: 14,
+        fontWeight: '900',
+        fontSize: 16,
+        textTransform: 'uppercase',
     },
     metricBox: {
         flex: 1,
-        alignItems: 'center',
+        borderWidth: 2,
+        borderColor: '#000',
+        padding: 10,
+        backgroundColor: '#fff',
     },
     metricLabel: {
         fontSize: 10,
-        color: '#666',
-        fontWeight: '700',
+        color: '#000',
+        fontWeight: '900',
+        marginBottom: 5,
     },
     metricValue: {
-        fontSize: 16,
-        fontWeight: '700',
+        fontSize: 18,
+        fontWeight: '900',
+    },
+    metricBarContainer: {
+        marginTop: 10,
+    },
+    progressBar: {
+        height: 20,
+        borderWidth: 2,
+        borderColor: '#000',
         marginTop: 5,
+        backgroundColor: '#fff',
+    },
+    progressFill: {
+        height: '100%',
+        backgroundColor: '#ff0000',
+    },
+    contextBar: {
+        backgroundColor: '#00ff41',
+        padding: 10,
+        borderTopWidth: 3,
+        borderColor: '#000',
     },
     contextText: {
         fontSize: 12,
-        marginTop: 5,
+        fontWeight: '700',
+        color: '#000',
         textAlign: 'center',
-        color: '#666',
     },
     opinionItem: {
-        marginBottom: 10,
-        borderBottomWidth: 1,
-        borderBottomColor: '#eee',
-        paddingBottom: 10,
+        marginBottom: 15,
+        borderWidth: 2,
+        borderColor: '#000',
+        shadowColor: '#000',
+        shadowOffset: { width: 3, height: 3 },
+        shadowOpacity: 1,
+        shadowRadius: 0,
+    },
+    opinionHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        backgroundColor: '#000',
+        padding: 5,
     },
     agentName: {
         fontSize: 12,
+        fontWeight: '900',
+        color: '#fff',
+    },
+    confidence: {
+        fontSize: 10,
         fontWeight: '700',
-        color: '#000',
-        marginBottom: 2,
+        color: '#00ff41',
     },
     thesis: {
-        fontSize: 12,
-        color: '#333',
-        lineHeight: 18,
+        fontSize: 14,
+        color: '#000',
+        padding: 10,
+        backgroundColor: '#fff',
+        lineHeight: 20,
+        fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+    },
+    narrativeBox: {
+        backgroundColor: '#fff',
+        borderWidth: 3,
+        borderColor: '#000',
+        padding: 15,
+        marginTop: 10,
     },
     narrativeText: {
         fontSize: 14,
+        fontWeight: '700',
+        color: '#000',
         lineHeight: 22,
+    },
+    footer: {
+        padding: 20,
+        alignItems: 'center',
+        opacity: 0.5,
+    },
+    footerText: {
+        fontSize: 12,
+        fontWeight: '900',
         color: '#000',
     }
 });
