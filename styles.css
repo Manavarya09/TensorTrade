@@ -331,3 +331,18 @@ body.dark-mode .btn-primary:hover {
     font-size: 0.8rem;
     text-transform: uppercase;
 }
+
+/* New Agent Styles */
+#risk-verdict span {
+    font-weight: 800;
+}
+
+#sentiment-bar {
+    transition: width 0.5s ease-in-out;
+}
+
+/* Compliance Badge */
+.compliance-badge {
+    background: var(--bg-color);
+    color: var(--text-color);
+}

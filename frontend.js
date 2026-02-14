@@ -567,6 +567,23 @@ const behavioralContent = document.createElement('div');
 behavioralContent.id = 'behavioral-content';
 behavioralContent.innerHTML = `
     <div style="display: flex; flex-direction: column; gap: 15px;">
+        <div id="risk-analysis-box" style="border: 1px solid var(--text-color); padding: 15px; display: none;">
+            <div style="font-size: 12px; color: var(--text-color); margin-bottom: 5px;">RISK ANALYSIS</div>
+            <div id="risk-metrics" style="font-size: 13px; margin-bottom: 8px;"></div>
+            <div id="risk-verdict" style="font-size: 13px; font-weight: 700;"></div>
+        </div>
+
+        <div id="sentiment-analysis-box" style="border: 1px solid var(--text-color); padding: 15px; display: none;">
+             <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                <div style="font-size: 12px; color: var(--text-color);">MARKET SENTIMENT</div>
+                <div id="sentiment-score" style="font-size: 12px; font-weight: 700;"></div>
+            </div>
+            <div class="risk-meter-container" style="margin-bottom: 8px;">
+                <div id="sentiment-bar" class="risk-meter-fill" style="width: 50%; background-color: var(--text-color);"></div>
+            </div>
+            <div id="sentiment-summary" style="font-size: 13px; line-height: 1.4;"></div>
+        </div>
+
         <div id="behavioral-flags" style="border: 1px solid var(--text-color); padding: 15px;">
             <div style="font-size: 12px; color: var(--text-color); margin-bottom: 5px;">BEHAVIORAL FLAGS</div>
             <div style="font-size: 13px; line-height: 1.5;">
@@ -1019,6 +1036,52 @@ function updateDashboard(data) {
                 <div style="font-size: 13px; line-height: 1.5;">[OK] No concerning patterns.</div>
             `;
         }
+    }
+
+    // New Agents: Risk & Sentiment
+    const riskBox = document.getElementById('risk-analysis-box');
+    const sentimentBox = document.getElementById('sentiment-analysis-box');
+
+    if (data.risk_analysis && data.risk_analysis.metrics) {
+        riskBox.style.display = 'block';
+        const m = data.risk_analysis.metrics;
+        const q = data.risk_analysis.qualitative || {};
+
+        document.getElementById('risk-metrics').innerHTML = `
+            VaR (95%): <span style="font-weight:700">${m.var_95}%</span> | Max DD: <span style="font-weight:700">${m.max_drawdown}%</span>
+        `;
+        document.getElementById('risk-verdict').innerHTML = `
+            VERDICT: <span style="color: ${q.verdict === 'HIGH' || q.verdict === 'EXTREME' ? 'var(--accent-color)' : 'var(--text-color)'}">${q.verdict || 'N/A'}</span>
+            <div style="font-weight:400; margin-top:4px;">${q.reasoning || ''}</div>
+        `;
+    }
+
+    if (data.sentiment_analysis && data.sentiment_analysis.score !== undefined) {
+        sentimentBox.style.display = 'block';
+        const s = data.sentiment_analysis;
+        const score = s.score || 0;
+        // Map -1 to 1 range to 0 to 100%
+        const pct = ((score + 1) / 2) * 100;
+
+        document.getElementById('sentiment-score').textContent = s.label || 'NEUTRAL';
+        document.getElementById('sentiment-bar').style.width = `${pct}%`;
+        document.getElementById('sentiment-summary').textContent = s.summary || '';
+    }
+
+    // Compliance Check
+    if (data.compliance_analysis && data.compliance_analysis.status) {
+        const comp = data.compliance_analysis;
+        const narrativesDiv = document.getElementById('narrative-output');
+        const badge = document.createElement('div');
+        badge.style.marginTop = '10px';
+        badge.style.fontSize = '11px';
+        badge.style.padding = '5px';
+        badge.style.border = comp.status === 'FLAGGED' ? '1px solid var(--accent-color)' : '1px solid var(--text-color)';
+        badge.innerHTML = `
+            <b>COMPLIANCE:</b> ${comp.status}
+            ${comp.notes ? ` - ${comp.notes}` : ''}
+        `;
+        narrativesDiv.appendChild(badge);
     }
     
     const marketContext = document.getElementById('market-context');

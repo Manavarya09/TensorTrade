@@ -13,6 +13,9 @@ from agents.behaviour_agent import BehaviorMonitorAgent
 from agents.narrator import NarratorAgent
 from agents.persona import PersonaAgent
 from agents.moderator import ModeratorAgent
+from agents.risk_manager import RiskManagerAgent
+from agents.sentiment_agent import SentimentAnalysisAgent
+from agents.compliance_agent import ComplianceAgent
 
 # Import LLM Council
 from llm_council.services.debate_engine import get_council_analysis, get_council_analysis_stream
@@ -290,13 +293,16 @@ async def analyze_asset_stream(asset: str, user_id: Optional[str] = "default_use
             context["current_price"] = mc["price"]
             context["volume"] = mc["volume"]
 
-            # 5. Narrator, Persona, Moderator
-            yield json.dumps({"type": "status", "message": "Generating strategic narrative..."}) + "\n"
+            # 5. Risk, Sentiment, Narrator, Persona, Moderator, Compliance
+            yield json.dumps({"type": "status", "message": "Running advanced agents (Risk, Sentiment)..."}) + "\n"
 
             agent_flow = [
+                ("SentimentAnalysisAgent", SentimentAnalysisAgent, True),
+                ("RiskManagerAgent", RiskManagerAgent, True),
                 ("NarratorAgent", NarratorAgent, False),
                 ("PersonaAgent", PersonaAgent, False),
-                ("ModeratorAgent", ModeratorAgent, False)
+                ("ModeratorAgent", ModeratorAgent, False),
+                ("ComplianceAgent", ComplianceAgent, True)
             ]
 
             for agent_name, agent_cls, is_async in agent_flow:
@@ -387,6 +393,9 @@ async def analyze_asset_stream(asset: str, user_id: Optional[str] = "default_use
                     "moderated_output": context.get("moderated_output", "")
                 },
                 "persona_post": context.get("persona_post", {"x": "", "linkedin": ""}),
+                "risk_analysis": context.get("risk_analysis", {}),
+                "sentiment_analysis": context.get("sentiment_analysis", {}),
+                "compliance_analysis": context.get("compliance_analysis", {}),
                 "timestamp": datetime.utcnow().isoformat()
             }
 
@@ -464,9 +473,12 @@ async def analyze_asset(asset: str, user_id: Optional[str] = "default_user"):
         agent_flow = [
             ("BehaviorMonitorAgent", BehaviorMonitorAgent, False),
             ("MarketWatcherAgent", MarketWatcherAgent, True),
+            ("SentimentAnalysisAgent", SentimentAnalysisAgent, True),
+            ("RiskManagerAgent", RiskManagerAgent, True),
             ("NarratorAgent", NarratorAgent, False),
             ("PersonaAgent", PersonaAgent, False),
-            ("ModeratorAgent", ModeratorAgent, False)
+            ("ModeratorAgent", ModeratorAgent, False),
+            ("ComplianceAgent", ComplianceAgent, True)
         ]
         
         for agent_name, agent_cls, is_async in agent_flow:
@@ -581,6 +593,10 @@ async def analyze_asset(asset: str, user_id: Optional[str] = "default_user"):
             
             "persona_post": context.get("persona_post", {"x": "", "linkedin": ""}),
             
+            "risk_analysis": context.get("risk_analysis", {}),
+            "sentiment_analysis": context.get("sentiment_analysis", {}),
+            "compliance_analysis": context.get("compliance_analysis", {}),
+
             # Metadata
             "timestamp": economic_data.get("timestamp"),
             "errors": {k: v for k, v in context.items() if k.endswith("_error")}
@@ -680,9 +696,12 @@ def root():
         "agents": {
             "BehaviorMonitorAgent": "Detects 10 behavioral trading patterns",
             "MarketWatcherAgent": "5 LLM debate council (Macro, Fundamental, Flow, Technical, Skeptic)",
+            "SentimentAnalysisAgent": "Analyzes market sentiment from news",
+            "RiskManagerAgent": "Calculates VaR, Max Drawdown, and qualitative risk",
             "NarratorAgent": "AI-powered session summaries with trends",
             "PersonaAgent": "Personality styling",
-            "ModeratorAgent": "Final moderation"
+            "ModeratorAgent": "Final moderation",
+            "ComplianceAgent": "Checks for regulatory flags (SEC/FINRA)"
         },
         "features": {
             "economic_calendar": "Automated earnings and economic event tracking",
