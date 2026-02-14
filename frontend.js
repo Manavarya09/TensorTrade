@@ -12,6 +12,7 @@ let isDemoMode = false;
 
 const DEMO_DATA = {
     "asset": "AAPL",
+    "persona_selected": "Coach",
     "market_metrics": {
         "vix": 18.5,
         "market_regime": "BULLISH VOLATILE",
@@ -57,6 +58,12 @@ const DEMO_DATA = {
     "persona_post": {
         "x": "AAPL breaking out! Fed pivot incoming? Watch $185. #trading #stocks",
         "linkedin": "Market analysis for AAPL suggests strong bullish momentum..."
+    },
+    "shariah_compliance": {
+        "compliant": true,
+        "score": 95,
+        "reason": "Core business (Technology) is Halal. Debt ratios are within acceptable limits (<30%).",
+        "issues": []
     }
 };
 
@@ -1068,6 +1075,43 @@ function updateDashboard(data) {
         document.getElementById('sentiment-summary').textContent = s.summary || '';
     }
 
+    // Shariah Compliance Check
+    if (data.shariah_compliance && data.shariah_compliance.score !== undefined) {
+        const shariah = data.shariah_compliance;
+        const narrativesDiv = document.getElementById('narrative-output');
+
+        const badge = document.createElement('div');
+        badge.style.marginTop = '10px';
+        badge.style.marginBottom = '10px';
+        badge.style.padding = '10px';
+
+        // Green for compliant, Red for non-compliant
+        const isCompliant = shariah.compliant;
+        // Use simpler colors to match theme
+        const borderColor = isCompliant ? '#00aa00' : '#cc0000';
+        const textColor = isCompliant ? '#006600' : '#cc0000';
+        const bgColor = isCompliant ? 'rgba(0, 255, 0, 0.05)' : 'rgba(255, 0, 0, 0.05)';
+
+        badge.style.border = `1px solid ${borderColor}`;
+        badge.style.backgroundColor = bgColor;
+        badge.style.color = textColor;
+
+        let issuesHtml = '';
+        if (shariah.issues && shariah.issues.length > 0) {
+            issuesHtml = `<div style="margin-top: 5px; font-size: 11px; opacity: 0.9;">⚠️ Issues: ${shariah.issues.join(', ')}</div>`;
+        }
+
+        badge.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; border-bottom: 1px solid ${borderColor}; padding-bottom: 4px;">
+                <b style="font-size: 12px;">ISLAMIC FINANCE SCREENING</b>
+                <span style="font-weight: 800; font-size: 12px;">${isCompliant ? 'HALAL' : 'HARAM'} (${shariah.score}/100)</span>
+            </div>
+            <div style="font-size: 12px; line-height: 1.4;">${shariah.reason || ''}</div>
+            ${issuesHtml}
+        `;
+        narrativesDiv.appendChild(badge);
+    }
+
     // Compliance Check
     if (data.compliance_analysis && data.compliance_analysis.status) {
         const comp = data.compliance_analysis;
@@ -1078,7 +1122,7 @@ function updateDashboard(data) {
         badge.style.padding = '5px';
         badge.style.border = comp.status === 'FLAGGED' ? '1px solid var(--accent-color)' : '1px solid var(--text-color)';
         badge.innerHTML = `
-            <b>COMPLIANCE:</b> ${comp.status}
+            <b>REGULATORY COMPLIANCE:</b> ${comp.status}
             ${comp.notes ? ` - ${comp.notes}` : ''}
         `;
         narrativesDiv.appendChild(badge);

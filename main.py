@@ -16,6 +16,7 @@ from agents.moderator import ModeratorAgent
 from agents.risk_manager import RiskManagerAgent
 from agents.sentiment_agent import SentimentAnalysisAgent
 from agents.compliance_agent import ComplianceAgent
+from agents.shariah_compliance_agent import ShariahComplianceAgent
 
 # Import LLM Council
 from llm_council.services.debate_engine import get_council_analysis, get_council_analysis_stream
@@ -299,6 +300,7 @@ async def analyze_asset_stream(asset: str, user_id: Optional[str] = "default_use
             agent_flow = [
                 ("SentimentAnalysisAgent", SentimentAnalysisAgent, True),
                 ("RiskManagerAgent", RiskManagerAgent, True),
+                ("ShariahComplianceAgent", ShariahComplianceAgent, True),
                 ("NarratorAgent", NarratorAgent, False),
                 ("PersonaAgent", PersonaAgent, False),
                 ("ModeratorAgent", ModeratorAgent, False),
@@ -396,6 +398,7 @@ async def analyze_asset_stream(asset: str, user_id: Optional[str] = "default_use
                 "risk_analysis": context.get("risk_analysis", {}),
                 "sentiment_analysis": context.get("sentiment_analysis", {}),
                 "compliance_analysis": context.get("compliance_analysis", {}),
+                "shariah_compliance": context.get("shariah_compliance", {}),
                 "timestamp": datetime.utcnow().isoformat()
             }
 
@@ -475,6 +478,7 @@ async def analyze_asset(asset: str, user_id: Optional[str] = "default_user"):
             ("MarketWatcherAgent", MarketWatcherAgent, True),
             ("SentimentAnalysisAgent", SentimentAnalysisAgent, True),
             ("RiskManagerAgent", RiskManagerAgent, True),
+            ("ShariahComplianceAgent", ShariahComplianceAgent, True),
             ("NarratorAgent", NarratorAgent, False),
             ("PersonaAgent", PersonaAgent, False),
             ("ModeratorAgent", ModeratorAgent, False),
@@ -596,6 +600,7 @@ async def analyze_asset(asset: str, user_id: Optional[str] = "default_user"):
             "risk_analysis": context.get("risk_analysis", {}),
             "sentiment_analysis": context.get("sentiment_analysis", {}),
             "compliance_analysis": context.get("compliance_analysis", {}),
+            "shariah_compliance": context.get("shariah_compliance", {}),
 
             # Metadata
             "timestamp": economic_data.get("timestamp"),
@@ -701,7 +706,8 @@ def root():
             "NarratorAgent": "AI-powered session summaries with trends",
             "PersonaAgent": "Personality styling",
             "ModeratorAgent": "Final moderation",
-            "ComplianceAgent": "Checks for regulatory flags (SEC/FINRA)"
+            "ComplianceAgent": "Checks for regulatory flags (SEC/FINRA)",
+            "ShariahComplianceAgent": "Evaluates assets for Shariah compliance"
         },
         "features": {
             "economic_calendar": "Automated earnings and economic event tracking",
